@@ -47,10 +47,12 @@ jobs:
     env:
       PR_NUMBER: ${{ needs.authorize.outputs.number }}
       PR_HEAD: ${{ needs.authorize.outputs.head }}
-      SMOKE_RESULTS: ${{ runner.temp }}/puli-smoke-results
-      SMOKE_SOURCE: ${{ runner.temp }}/puli-smoke-source
-      SMOKE_ARTIFACTS: ${{ runner.temp }}/puli-smoke-artifacts
     steps:
+      - name: Prepare isolated paths
+        run: |
+          printf 'SMOKE_RESULTS=%s/puli-smoke-results\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf 'SMOKE_SOURCE=%s/puli-smoke-source\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf 'SMOKE_ARTIFACTS=%s/puli-smoke-artifacts\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
