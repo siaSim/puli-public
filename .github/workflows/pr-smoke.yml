@@ -1,5 +1,6 @@
 name: PR comment checks
-run-name: "PR #${{ github.event.issue.number }} ${{ github.event.comment.body == '/migration-check' && '/migration-check' || github.event.comment.body == '/ocr-check' && '/ocr-check' || '/smoke' }}"
+run-name: >-
+  PR #${{ github.event.issue.number }} ${{ contains(fromJSON('["/smoke","/ocr-check","/migration-check","/preview"]'), github.event.comment.body) && github.event.comment.body || '댓글 검사' }}
 
 on:
   issue_comment:
@@ -11,7 +12,7 @@ jobs:
   authorize:
     if: >-
       github.event.issue.pull_request &&
-      contains(fromJSON('["/smoke","/ocr-check","/migration-check"]'), github.event.comment.body) &&
+      contains(fromJSON('["/smoke","/ocr-check","/migration-check","/preview"]'), github.event.comment.body) &&
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
     runs-on: ubuntu-24.04
     timeout-minutes: 2
@@ -35,7 +36,7 @@ jobs:
           esac
           command=$(jq -er '.comment.body' "$GITHUB_EVENT_PATH")
           case "$command" in
-            /smoke|/ocr-check|/migration-check) ;;
+            /smoke|/ocr-check|/migration-check|/preview) ;;
             *) exit 0 ;;
           esac
           number=$(jq -er '.issue.number' "$GITHUB_EVENT_PATH")
@@ -44,7 +45,7 @@ jobs:
           printf 'number=%s\nhead=%s\ncommand=%s\n' "$number" "$head" "$command" >> "$GITHUB_OUTPUT"
 
   check:
-    name: ${{ needs.authorize.outputs.command == '/migration-check' && '가상 DB 마이그레이션 비교' || needs.authorize.outputs.command == '/ocr-check' && 'OCR 판정 비교' || '가상 스터디 브라우저 검증' }}
+    name: ${{ fromJSON('{"/smoke":"가상 스터디 브라우저 검증","/ocr-check":"OCR 판정 비교","/migration-check":"가상 DB 마이그레이션 비교","/preview":"PC 및 모바일 화면 비교"}')[needs.authorize.outputs.command] }}
     needs: authorize
     if: needs.authorize.outputs.head != ''
     runs-on: ubuntu-24.04
@@ -55,7 +56,7 @@ jobs:
       PR_NUMBER: ${{ needs.authorize.outputs.number }}
       PR_HEAD: ${{ needs.authorize.outputs.head }}
       PR_COMMAND: ${{ needs.authorize.outputs.command }}
-      ARTIFACT_NAME: ${{ needs.authorize.outputs.command == '/migration-check' && 'migration-comparison' || needs.authorize.outputs.command == '/ocr-check' && 'ocr-comparison' || 'smoke-failure' }}
+      ARTIFACT_NAME: ${{ fromJSON('{"/smoke":"smoke-failure","/ocr-check":"ocr-comparison","/migration-check":"migration-comparison","/preview":"preview-comparison"}')[needs.authorize.outputs.command] }}
     steps:
       - name: Prepare isolated paths
         run: |
@@ -89,6 +90,7 @@ jobs:
             /smoke) script=smoke.mjs ;;
             /ocr-check) script=ocr-check.mjs ;;
             /migration-check) script=migration-check.mjs ;;
+            /preview) script=preview.mjs ;;
             *) exit 1 ;;
           esac
           docker run --rm --init --network none --read-only \
@@ -96,7 +98,7 @@ jobs:
             --pids-limit 256 --memory 3g --shm-size 256m \
             --tmpfs /tmp:rw,exec,nosuid,nodev,mode=1777,size=1g \
             --env HOME=/tmp --env PULI_SMOKE_RESULTS=/results --env PULI_OCR_RESULTS=/results \
-            --env PULI_MIGRATION_RESULTS=/results --env WRANGLER_SEND_METRICS=false \
+            --env PULI_MIGRATION_RESULTS=/results --env PULI_PREVIEW_RESULTS=/results --env WRANGLER_SEND_METRICS=false \
             --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/trusted,readonly" \
             --mount "type=bind,src=$PR_SOURCE,dst=/candidate,readonly" \
             --mount "type=bind,src=$CHECK_RESULTS,dst=/results" \
@@ -128,8 +130,8 @@ jobs:
           mkdir -p "$CHECK_ARTIFACTS"
           files=(failure.png run.log)
           if [[ "$PR_COMMAND" != '/smoke' ]]; then files+=(comparison.json); fi
-          if [[ "$PR_COMMAND" == '/migration-check' ]]; then files+=(summary.md); fi
-          if [[ "$PR_COMMAND" == '/ocr-check' ]]; then
+          if [[ "$PR_COMMAND" == '/migration-check' || "$PR_COMMAND" == '/preview' ]]; then files+=(summary.md); fi
+          if [[ "$PR_COMMAND" == '/ocr-check' || "$PR_COMMAND" == '/preview' ]]; then
             files+=(report.html)
             for image in "$CHECK_RESULTS"/*.png; do
               name=${image##*/}

@@ -81,3 +81,17 @@ Actions의 **Summary**에서 적용한 SQL, 테이블별 행 수, 변경된 필�
 npm ci
 npm run test:migration -- /path/to/pr-source
 ```
+
+## PR에서 PC와 모바일 화면 비교
+
+저장소에 쓰기 권한이 있는 사람이 PR에 `/preview`를 단독 댓글로 남기면, 실행 시점의 `main`과 PR에 같은 가상 스터디를 만들고 화면을 캡처합니다. 문제와 인증 현황, 문제 등록, 사진 인증 화면을 PC(1280×900)와 모바일(390×844)로 비교합니다.
+
+Actions의 **Summary**에 화면별 변경 픽셀 비율이 표시됩니다. **Artifacts → preview-comparison**을 내려받아 압축을 풀고 `report.html`을 열면 `main`, PR, 변경 비교가 나란히 보입니다. 변경 비교에서 분홍색은 달라진 부분입니다. 화면 차이는 검토용으로 기록하며 캡처 오류가 생기면 실패한 기기와 화면을 표시합니다.
+
+로컬에서는 기준 버전의 프로젝트 루트에서 실행합니다. 결과는 `qa/preview/`에 저장합니다.
+
+```sh
+npm ci
+npx playwright install chromium
+npm run test:preview -- /path/to/pr-source
+```

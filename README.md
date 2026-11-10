@@ -85,6 +85,7 @@ PR을 열면 `npm run check`와 `npm test`가 실행됩니다. GitHub에서 실�
 | `/smoke` | 문제 등록, 사진 제출, 팀원 승인 흐름을 바꿨을 때 | **Summary**에서 통과한 단계와 실패한 단계를 확인합니다. 실패 시 저장된 화면과 로그는 **Artifacts → smoke-failure**에 있습니다. |
 | `/ocr-check` | 사진의 글자 인식이나 정답 판정 기준을 바꿨을 때 | **Summary**에서 같은 캡처에 대한 `main`과 PR의 판정을 비교합니다. **Artifacts → ocr-comparison**의 `report.html`에서 판정이 바뀐 사진과 인식한 글자를 봅니다. |
 | `/migration-check` | `migrations/`에 새 SQL을 추가해 DB 구조나 저장 데이터를 바꿀 때 | **Summary**에서 가상 회차, 팀원, 인증 기록의 변경 전후를 봅니다. 전체 내역은 **Artifacts → migration-comparison**의 `comparison.json`에 있습니다. |
+| `/preview` | 화면의 배치, 색상, 문구 또는 모바일 보기를 바꿨을 때 | **Summary**에서 기기별 화면 차이를 봅니다. **Artifacts → preview-comparison**의 `report.html`을 열면 `main`, PR, 변경 영역이 나란히 표시됩니다. |
 
 검사별 범위와 로컬 실행 명령은 [검증 방법](docs/VERIFICATION.md#pr에서-브라우저-스모크-테스트-실행)에 있습니다.
 

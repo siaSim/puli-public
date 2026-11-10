@@ -16,7 +16,8 @@
     "predeploy": "npm run build:ocr",
     "test:smoke": "node scripts/smoke.mjs",
     "test:ocr": "node scripts/ocr-check.mjs",
-    "test:migration": "node scripts/migration-check.mjs"
+    "test:migration": "node scripts/migration-check.mjs",
+    "test:preview": "node scripts/preview.mjs"
   },
   "devDependencies": {
     "@tesseract.js-data/eng": "1.0.0",
