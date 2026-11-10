@@ -66,3 +66,18 @@ npm run test:ocr -- /path/to/pr-source
 ```
 
 로컬 실행 결과는 `qa/ocr-check/`에 저장합니다.
+
+## PR에서 DB 마이그레이션 검증
+
+저장소에 쓰기 권한이 있는 사람이 PR에 `/migration-check`를 한 줄로 남기면, 실행 시점의 `main` 스키마로 임시 D1을 만들고 가상 회차, 멤버, 인증과 사진 검토 기록을 넣습니다. 이어서 PR에 새로 추가된 마이그레이션을 적용하고 이전 기록과 비교합니다.
+
+Actions의 **Summary**에서 적용한 SQL, 테이블별 행 수, 변경된 필드의 전후 값을 확인할 수 있습니다. 전체 내역과 외래 키 위반 정보는 **Artifacts → migration-comparison**의 `comparison.json`에 저장합니다.
+
+기존 기록이나 열이 바뀌거나 사라진 경우, 외래 키 위반, 실행 오류, 이미 적용된 마이그레이션의 수정은 실패로 표시합니다. 기존 기록을 보존한 상태에서 추가된 행과 열은 별도로 표시합니다.
+
+로컬에서 실행하려면 기준 버전의 프로젝트 루트에서 아래 명령을 사용하세요. 결과는 `qa/migration-check/`에 저장합니다.
+
+```sh
+npm ci
+npm run test:migration -- /path/to/pr-source
+```
