@@ -13,11 +13,13 @@
     "check": "node --check public/app.js && node --check public/dashboard.js && node --check public/activity.js && node --check public/pending.js && node --check public/core.js && node --check server/index.js && node --check server/rounds.js && node --check server/sync.js && node --check server/github.js && node --check server/crypto.js && node --check server/session.js && node --check server/invites.js && node --check server/studies.js && node --check public/studies.js && node --check public/study-ui.js && node --check public/rules.js && node --check public/rule-forms.js && node --check server/free-problems.js && node --check public/ocr-image.js && node --check public/ocr.js && node --check public/ocr-match.js && node --check public/photo-review.js && node --check server/photos.js && node --check public/solutions.js && node --check server/solutions.js",
     "build:ocr": "node scripts/prepare-ocr.mjs",
     "predev": "npm run build:ocr",
-    "predeploy": "npm run build:ocr"
+    "predeploy": "npm run build:ocr",
+    "test:smoke": "node scripts/smoke.mjs"
   },
   "devDependencies": {
     "@tesseract.js-data/eng": "1.0.0",
     "@tesseract.js-data/kor": "1.0.0",
+    "playwright": "1.64.1",
     "tesseract.js": "7.0.0",
     "wrangler": "4.92.0"
   },

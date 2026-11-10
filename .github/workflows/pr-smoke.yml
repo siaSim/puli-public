@@ -1,0 +1,117 @@
+name: PR smoke
+run-name: "PR #${{ github.event.issue.number }} /smoke"
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+jobs:
+  authorize:
+    if: >-
+      github.event.issue.pull_request && github.event.comment.body == '/smoke' &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions:
+      pull-requests: read
+    outputs:
+      number: ${{ steps.pr.outputs.number }}
+      head: ${{ steps.pr.outputs.head }}
+    steps:
+      - name: Confirm maintainer permission and capture the PR commit
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          author=$(jq -er '.comment.user.login' "$GITHUB_EVENT_PATH")
+          permission=$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$author/permission" --jq .permission)
+          case "$permission" in
+            admin|maintain|write) ;;
+            *) echo 'Only maintainers can run /smoke.'; exit 0 ;;
+          esac
+          number=$(jq -er '.issue.number' "$GITHUB_EVENT_PATH")
+          head=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$number" --jq 'select(.base.ref == "main") | .head.sha')
+          [[ "$number" =~ ^[0-9]+$ && "$head" =~ ^[0-9a-f]{40}$ ]]
+          printf 'number=%s\nhead=%s\n' "$number" "$head" >> "$GITHUB_OUTPUT"
+
+  smoke:
+    name: 가상 스터디 브라우저 검증
+    needs: authorize
+    if: needs.authorize.outputs.head != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      PR_NUMBER: ${{ needs.authorize.outputs.number }}
+      PR_HEAD: ${{ needs.authorize.outputs.head }}
+      SMOKE_RESULTS: ${{ runner.temp }}/puli-smoke-results
+      SMOKE_SOURCE: ${{ runner.temp }}/puli-smoke-source
+      SMOKE_ARTIFACTS: ${{ runner.temp }}/puli-smoke-artifacts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install dependencies from the default branch
+        run: npm ci --no-audit --no-fund
+      - name: Fetch the requested PR source without executing it
+        run: |
+          git fetch --no-tags --depth=1 origin "refs/pull/$PR_NUMBER/head"
+          if [[ "$(git rev-parse FETCH_HEAD)" != "$PR_HEAD" ]]; then
+            echo 'PR head changed. Run /smoke again for the latest commit.'
+            exit 1
+          fi
+          mkdir -p "$SMOKE_SOURCE" "$SMOKE_RESULTS"
+          git archive FETCH_HEAD | tar -xf - -C "$SMOKE_SOURCE"
+      - name: Run the browser scenario in an isolated container
+        run: |
+          docker run --rm --init --network none --read-only \
+            --user "$(id -u):$(id -g)" --cap-drop ALL --security-opt no-new-privileges \
+            --pids-limit 256 --memory 3g --shm-size 256m \
+            --tmpfs /tmp:rw,exec,nosuid,nodev,mode=1777,size=1g \
+            --env HOME=/tmp --env PULI_SMOKE_RESULTS=/results \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/trusted,readonly" \
+            --mount "type=bind,src=$SMOKE_SOURCE,dst=/candidate,readonly" \
+            --mount "type=bind,src=$SMOKE_RESULTS,dst=/results" \
+            mcr.microsoft.com/playwright:v1.64.1-noble \
+            node /trusted/scripts/smoke.mjs /candidate > "$SMOKE_RESULTS/run.log" 2>&1
+      - name: Show the completed and failed steps
+        if: always()
+        run: |
+          printf 'PR #%s, commit `%s`\n\n' "$PR_NUMBER" "$PR_HEAD" >> "$GITHUB_STEP_SUMMARY"
+          summary="$SMOKE_RESULTS/summary.md"
+          log="$SMOKE_RESULTS/run.log"
+          if [[ -f "$summary" && ! -L "$summary" ]]; then
+            cat "$summary" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo '브라우저 단계 결과가 생성되지 않았습니다. 실행 로그를 확인하세요.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [[ -f "$log" && ! -L "$log" ]]; then
+            stop=$(cat /proc/sys/kernel/random/uuid)
+            printf '::stop-commands::%s\n' "$stop"
+            tail -c 12000 "$log"
+            printf '\n::%s::\n' "$stop"
+          fi
+      - name: Collect failure files
+        if: failure()
+        run: |
+          mkdir -p "$SMOKE_ARTIFACTS"
+          for name in failure.png run.log; do
+            file="$SMOKE_RESULTS/$name"
+            if [[ -f "$file" && ! -L "$file" ]]; then
+              cp -- "$file" "$SMOKE_ARTIFACTS/$name"
+            fi
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: smoke-failure
+          path: ${{ env.SMOKE_ARTIFACTS }}/
+          if-no-files-found: ignore
+          retention-days: 7
