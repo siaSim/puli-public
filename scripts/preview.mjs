@@ -25,7 +25,7 @@ async function seedPreview(db) {
   const at = time.toISOString();
   await db.batch([
     db.prepare("UPDATE studies SET name = ?, description = ?, created_by = '1' WHERE id = 'study'")
-      .bind('풀이 미리보기 스터디', '같은 문제를 풀고 인증 결과를 공유하는 가상 스터디입니다.'),
+      .bind('푸리 미리보기 스터디', '같은 문제를 풀고 인증 결과를 공유하는 가상 스터디입니다.'),
     db.prepare(`INSERT INTO rounds
       (id, number, title, start_date, deadline_date, setter, problems, created_at, registered_by)
       VALUES (?, ?, ?, ?, ?, '1', ?, ?, '1')`)
@@ -119,14 +119,14 @@ async function compareImages(base, pr, file) {
 function htmlReport(rows) {
   const figure = (label, file) => `<figure><figcaption>${label}</figcaption><a href="${file}"><img loading="lazy" src="${file}" alt="${label} 화면"></a></figure>`;
   return `<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>풀이 PR 화면 비교</title><style>
+<title>푸리 PR 화면 비교</title><style>
 body{font:1rem/1.55 system-ui,sans-serif;margin:2rem auto;padding:0 1rem;max-width:100rem;color:#17212e;background:#f7f9fc}
 section{margin-block:2rem;padding:1rem;border:1px solid #dbe2ea;border-radius:10px;background:white}
 .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;align-items:start}
 figure{margin:0;min-width:0}figcaption{margin-bottom:.5rem;font-weight:650}
 img{display:block;width:100%;height:auto;border:1px solid #dbe2ea}a{color:#175873}
 @media(max-width:700px){.grid{grid-template-columns:1fr}}
-</style><h1>풀이 PR 화면 비교</h1>
+</style><h1>푸리 PR 화면 비교</h1>
 <p>같은 가상 스터디를 PC와 모바일에서 캡처했습니다. 변경 비교에서 분홍색은 달라진 픽셀입니다. 이미지를 누르면 원본 PNG를 열 수 있습니다.</p>
 <nav>${rows.map(row => `<a href="#${row.id}">${h(row.device + ' ' + row.view)}</a>`).join(' / ')}</nav>
 ${rows.map(row => `<section id="${row.id}"><h2>${h(row.device + ' ' + row.view)}</h2>
