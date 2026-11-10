@@ -34,7 +34,7 @@ npm run build:ocr
 
 ## PR에서 브라우저 스모크 테스트 실행
 
-저장소에 쓰기 권한이 있는 사람이 PR의 **Conversation** 탭에 `/smoke`를 한 줄로 남기면 [PR smoke 워크플로](https://github.com/siaSim/puli-public/actions/workflows/pr-smoke.yml)가 해당 PR의 커밋을 검사합니다.
+저장소에 쓰기 권한이 있는 사람이 PR의 **Conversation** 탭에 `/smoke`를 한 줄로 남기면 [PR 댓글 검사 워크플로](https://github.com/siaSim/puli-public/actions/workflows/pr-smoke.yml)가 해당 PR의 커밋을 검사합니다.
 
 가상 운영자가 문제를 등록하고 사진을 제출하면, 가상 팀원이 사진을 열어 승인합니다. 실제 브라우저 화면과 임시 D1을 사용하고, 사진은 팀원 확인이 필요하도록 OCR 응답을 모의합니다.
 
@@ -49,3 +49,20 @@ npm run test:smoke
 ```
 
 로컬 실행 결과는 `qa/smoke/`에 저장합니다.
+
+## PR에서 OCR 판정 비교
+
+저장소에 쓰기 권한이 있는 사람이 PR에 `/ocr-check`를 한 줄로 남기면, 같은 예시 캡처를 실행 시점의 `main`과 PR 코드에서 각각 인식하고 판정합니다. 예시에는 LeetCode의 밝은 화면과 다크모드 통과, 다른 문제 통과, 오답, 프로그래머스 다크모드 통과가 포함됩니다. 사진은 개인정보 없이 만든 예시이며 두 버전은 `main`에 고정된 OCR 엔진과 언어 모델을 공유합니다.
+
+Actions의 **Summary**에 기준 커밋, 사진별 판정, 판정이 달라진 사진 수가 나옵니다. **Artifacts → ocr-comparison**을 내려받아 압축을 풀고 `report.html`을 열면 바뀐 사진이 위에 표시됩니다. 각 사진에서 인식한 글자와 판정 근거도 비교할 수 있습니다. PR 판정이 예시의 기대값과 다르면 해당 실행을 실패로 표시합니다.
+
+로컬에서는 기준 버전의 프로젝트 루트에서 OCR 자산을 준비하고 비교할 PR 소스 경로를 넘깁니다.
+
+```sh
+npm ci
+npx playwright install chromium
+npm run build:ocr
+npm run test:ocr -- /path/to/pr-source
+```
+
+로컬 실행 결과는 `qa/ocr-check/`에 저장합니다.
