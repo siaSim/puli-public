@@ -2,6 +2,8 @@
 
 GitHub 풀이 기록과 인증 사진으로 함께 공부하는 코딩테스트 스터디 서비스입니다. 한 계정으로 여러 스터디를 만들고, 각 스터디가 공통 문제형 또는 자율 목표형으로 운영할 수 있습니다.
 
+코드를 처음 기여한다면 [처음 기여하기](#처음-기여하기)에서 맡을 이슈를 고르고 PR을 올리는 방법을 확인하세요.
+
 ## 스터디 방식
 
 | 방식 | 등록하는 내용 | 메인 화면 | 인증 기준 |
@@ -35,6 +37,40 @@ cp wrangler.example.jsonc wrangler.local.json
 ```
 
 이어서 [로컬 설치 안내](docs/INSTALLATION.md)에 따라 로컬 키와 D1을 준비합니다. 직접 운영하려면 [설치 및 배포 안내](docs/DEPLOYMENT.md)에 따라 본인의 Cloudflare Worker, D1과 GitHub App을 만드세요. 새 설치에는 스터디원, 회차, 인증 기록이 들어 있지 않습니다.
+
+## 처음 기여하기
+
+### 이슈 고르기
+
+- [#1 모든 JavaScript 소스 파일을 문법 검사에 포함하기](https://github.com/siaSim/puli-public/issues/1)
+- [#2 인증 방법 탭에서 Home과 End 키 지원하기](https://github.com/siaSim/puli-public/issues/2)
+- [#3 프로그래머스 OCR이 문제 제목만 잘라내는지 테스트하기](https://github.com/siaSim/puli-public/issues/3)
+
+이슈마다 수정할 범위와 확인 방법이 적혀 있습니다. 상태와 댓글을 보고 아직 맡을 수 있는 이슈를 고르세요. 새로 올라온 작업은 [열린 첫 기여 이슈 목록](https://github.com/siaSim/puli-public/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22)에서도 볼 수 있습니다.
+
+### 포크해서 PR 올리기
+
+1. 이 저장소 오른쪽 위의 **Fork**를 누르고, 본인 계정을 선택해 **Create fork**를 누릅니다.
+2. 본인 포크를 로컬에 복제하고 작업 브랜치를 만듭니다. 아래 예시의 `YOUR_GITHUB_ID`를 본인 GitHub 아이디로 바꾸고, `issue-1`에는 맡은 이슈 번호를 넣으세요.
+
+   ```sh
+   git clone https://github.com/YOUR_GITHUB_ID/puli-public.git
+   cd puli-public
+   git switch -c fix/issue-1
+   ```
+
+3. [로컬 설치 안내](docs/INSTALLATION.md)에 따라 개발 환경을 준비합니다. 수정한 뒤 이슈에 적힌 확인 방법을 실행하세요. 공통 검사 명령은 [기여 가이드](CONTRIBUTING.md#검증)에 있습니다.
+4. `git status`로 변경 파일을 확인한 뒤 필요한 파일을 커밋하고 본인 포크에 올립니다. 아래 파일 경로와 커밋 메시지는 작업에 맞게 바꾸세요.
+
+   ```sh
+   git status
+   git add -- path/to/changed-file
+   git commit -m "Improve JavaScript syntax checks"
+   git push -u origin fix/issue-1
+   ```
+
+5. GitHub에서 **Compare & pull request**를 누릅니다. 대상 저장소와 브랜치가 `siaSim/puli-public:main`이고, 비교 브랜치가 본인 포크의 작업 브랜치인지 확인하세요. 버튼이 보이지 않으면 이 저장소의 **Pull requests → New pull request → compare across forks**에서 선택할 수 있습니다.
+6. 바꾼 내용과 확인 결과를 적고 **Create pull request**를 누릅니다. 이슈를 해결하는 PR이라면 본문에 `Closes #1`처럼 실제 이슈 번호를 적으세요.
 
 ## 문서
 
