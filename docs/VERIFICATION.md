@@ -31,3 +31,21 @@ npm run build:ocr
 - 다른 팀원은 작성자가 공유에 동의한 코드와 메모만 볼 수 있는지
 
 자동 검사에서는 실제 GitHub 승인, 외부 webhook 수신, 브라우저 기기별 OCR 품질을 확인하지 않습니다. 해당 흐름을 바꾼 PR에는 직접 확인한 환경과 결과를 적어 주세요.
+
+## PR에서 브라우저 스모크 테스트 실행
+
+저장소에 쓰기 권한이 있는 사람이 PR의 **Conversation** 탭에 `/smoke`를 한 줄로 남기면 [PR smoke 워크플로](https://github.com/siaSim/puli-public/actions/workflows/pr-smoke.yml)가 해당 PR의 커밋을 검사합니다.
+
+가상 운영자가 문제를 등록하고 사진을 제출하면, 가상 팀원이 사진을 열어 승인합니다. 실제 브라우저 화면과 임시 D1을 사용하고, 사진은 팀원 확인이 필요하도록 OCR 응답을 모의합니다.
+
+워크플로의 **Summary**에서 통과한 단계와 실패한 단계를 볼 수 있습니다. 실패한 시점에 브라우저가 열려 있었다면 **Artifacts → smoke-failure**에 당시 스크린샷과 로그가 저장됩니다.
+
+로컬에서 같은 흐름을 확인하려면 프로젝트 루트에서 실행합니다.
+
+```sh
+npm ci
+npx playwright install chromium
+npm run test:smoke
+```
+
+로컬 실행 결과는 `qa/smoke/`에 저장합니다.
