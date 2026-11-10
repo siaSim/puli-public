@@ -1,5 +1,5 @@
 name: PR comment checks
-run-name: "PR #${{ github.event.issue.number }} ${{ github.event.comment.body == '/ocr-check' && '/ocr-check' || '/smoke' }}"
+run-name: "PR #${{ github.event.issue.number }} ${{ github.event.comment.body == '/migration-check' && '/migration-check' || github.event.comment.body == '/ocr-check' && '/ocr-check' || '/smoke' }}"
 
 on:
   issue_comment:
@@ -11,7 +11,7 @@ jobs:
   authorize:
     if: >-
       github.event.issue.pull_request &&
-      contains(fromJSON('["/smoke","/ocr-check"]'), github.event.comment.body) &&
+      contains(fromJSON('["/smoke","/ocr-check","/migration-check"]'), github.event.comment.body) &&
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
     runs-on: ubuntu-24.04
     timeout-minutes: 2
@@ -35,7 +35,7 @@ jobs:
           esac
           command=$(jq -er '.comment.body' "$GITHUB_EVENT_PATH")
           case "$command" in
-            /smoke|/ocr-check) ;;
+            /smoke|/ocr-check|/migration-check) ;;
             *) exit 0 ;;
           esac
           number=$(jq -er '.issue.number' "$GITHUB_EVENT_PATH")
@@ -43,8 +43,8 @@ jobs:
           [[ "$number" =~ ^[0-9]+$ && "$head" =~ ^[0-9a-f]{40}$ ]]
           printf 'number=%s\nhead=%s\ncommand=%s\n' "$number" "$head" "$command" >> "$GITHUB_OUTPUT"
 
-  browser-check:
-    name: ${{ needs.authorize.outputs.command == '/ocr-check' && 'OCR 판정 비교' || '가상 스터디 브라우저 검증' }}
+  check:
+    name: ${{ needs.authorize.outputs.command == '/migration-check' && '가상 DB 마이그레이션 비교' || needs.authorize.outputs.command == '/ocr-check' && 'OCR 판정 비교' || '가상 스터디 브라우저 검증' }}
     needs: authorize
     if: needs.authorize.outputs.head != ''
     runs-on: ubuntu-24.04
@@ -55,6 +55,7 @@ jobs:
       PR_NUMBER: ${{ needs.authorize.outputs.number }}
       PR_HEAD: ${{ needs.authorize.outputs.head }}
       PR_COMMAND: ${{ needs.authorize.outputs.command }}
+      ARTIFACT_NAME: ${{ needs.authorize.outputs.command == '/migration-check' && 'migration-comparison' || needs.authorize.outputs.command == '/ocr-check' && 'ocr-comparison' || 'smoke-failure' }}
     steps:
       - name: Prepare isolated paths
         run: |
@@ -82,11 +83,12 @@ jobs:
           fi
           mkdir -p "$PR_SOURCE" "$CHECK_RESULTS"
           git archive FETCH_HEAD | tar -xf - -C "$PR_SOURCE"
-      - name: Run the browser check in an isolated container
+      - name: Run the requested check in an isolated container
         run: |
           case "$PR_COMMAND" in
             /smoke) script=smoke.mjs ;;
             /ocr-check) script=ocr-check.mjs ;;
+            /migration-check) script=migration-check.mjs ;;
             *) exit 1 ;;
           esac
           docker run --rm --init --network none --read-only \
@@ -94,6 +96,7 @@ jobs:
             --pids-limit 256 --memory 3g --shm-size 256m \
             --tmpfs /tmp:rw,exec,nosuid,nodev,mode=1777,size=1g \
             --env HOME=/tmp --env PULI_SMOKE_RESULTS=/results --env PULI_OCR_RESULTS=/results \
+            --env PULI_MIGRATION_RESULTS=/results --env WRANGLER_SEND_METRICS=false \
             --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/trusted,readonly" \
             --mount "type=bind,src=$PR_SOURCE,dst=/candidate,readonly" \
             --mount "type=bind,src=$CHECK_RESULTS,dst=/results" \
@@ -103,7 +106,7 @@ jobs:
         if: always()
         run: |
           printf 'PR #%s, commit `%s`\n\n' "$PR_NUMBER" "$PR_HEAD" >> "$GITHUB_STEP_SUMMARY"
-          if [[ "$PR_COMMAND" == '/ocr-check' ]]; then
+          if [[ "$PR_COMMAND" != '/smoke' ]]; then
             printf 'main 기준 커밋 `%s`\n\n' "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
           fi
           summary="$CHECK_RESULTS/summary.md"
@@ -111,7 +114,7 @@ jobs:
           if [[ -f "$summary" && ! -L "$summary" ]]; then
             cat "$summary" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo '브라우저 단계 결과가 생성되지 않았습니다. 실행 로그를 확인하세요.' >> "$GITHUB_STEP_SUMMARY"
+            echo '단계 결과가 생성되지 않았습니다. 실행 로그를 확인하세요.' >> "$GITHUB_STEP_SUMMARY"
           fi
           if [[ -f "$log" && ! -L "$log" ]]; then
             stop=$(cat /proc/sys/kernel/random/uuid)
@@ -120,12 +123,14 @@ jobs:
             printf '\n::%s::\n' "$stop"
           fi
       - name: Collect report files
-        if: always() && (env.PR_COMMAND == '/ocr-check' || failure())
+        if: always() && (env.PR_COMMAND != '/smoke' || failure())
         run: |
           mkdir -p "$CHECK_ARTIFACTS"
           files=(failure.png run.log)
+          if [[ "$PR_COMMAND" != '/smoke' ]]; then files+=(comparison.json); fi
+          if [[ "$PR_COMMAND" == '/migration-check' ]]; then files+=(summary.md); fi
           if [[ "$PR_COMMAND" == '/ocr-check' ]]; then
-            files+=(report.html comparison.json)
+            files+=(report.html)
             for image in "$CHECK_RESULTS"/*.png; do
               name=${image##*/}
               if [[ "$name" =~ ^[a-z0-9-]+\.png$ ]]; then files+=("$name"); fi
@@ -138,9 +143,9 @@ jobs:
             fi
           done
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always() && (env.PR_COMMAND == '/ocr-check' || failure())
+        if: always() && (env.PR_COMMAND != '/smoke' || failure())
         with:
-          name: ${{ env.PR_COMMAND == '/ocr-check' && 'ocr-comparison' || 'smoke-failure' }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: ${{ env.CHECK_ARTIFACTS }}/
           if-no-files-found: ignore
           retention-days: 7
