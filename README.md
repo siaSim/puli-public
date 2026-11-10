@@ -72,6 +72,22 @@ cp wrangler.example.jsonc wrangler.local.json
 5. GitHub에서 **Compare & pull request**를 누릅니다. 대상 저장소와 브랜치가 `siaSim/puli-public:main`이고, 비교 브랜치가 본인 포크의 작업 브랜치인지 확인하세요. 버튼이 보이지 않으면 이 저장소의 **Pull requests → New pull request → compare across forks**에서 선택할 수 있습니다.
 6. 바꾼 내용과 확인 결과를 적고 **Create pull request**를 누릅니다. 이슈를 해결하는 PR이라면 본문에 `Closes #1`처럼 실제 이슈 번호를 적으세요.
 
+### PR 댓글로 추가 검사하기
+
+PR을 열면 `npm run check`와 `npm test`가 실행됩니다. GitHub에서 실행 승인을 요청하는 경우 관리자 승인 후 시작합니다. 화면 흐름, 사진 인식 또는 DB 구조를 바꿨다면 아래에서 필요한 추가 검사를 고르세요.
+
+저장소에 쓰기 권한이 있는 사람이 PR의 **Conversation** 탭에 명령 하나만 단독 댓글로 남기면 실행됩니다. 포크에서 처음 기여한다면 PR 본문에 필요한 명령을 적어 관리자에게 실행을 요청하세요.
+
+[Actions의 PR comment checks](https://github.com/siaSim/puli-public/actions/workflows/pr-smoke.yml)에서 `PR #번호 /명령`에 해당하는 실행을 열면 아래 결과를 볼 수 있습니다.
+
+| 명령 | 언제 쓰나요? | 결과는 어디서 보나요? |
+| --- | --- | --- |
+| `/smoke` | 문제 등록, 사진 제출, 팀원 승인 흐름을 바꿨을 때 | **Summary**에서 통과한 단계와 실패한 단계를 확인합니다. 실패 시 저장된 화면과 로그는 **Artifacts → smoke-failure**에 있습니다. |
+| `/ocr-check` | 사진의 글자 인식이나 정답 판정 기준을 바꿨을 때 | **Summary**에서 같은 캡처에 대한 `main`과 PR의 판정을 비교합니다. **Artifacts → ocr-comparison**의 `report.html`에서 판정이 바뀐 사진과 인식한 글자를 봅니다. |
+| `/migration-check` | `migrations/`에 새 SQL을 추가해 DB 구조나 저장 데이터를 바꿀 때 | **Summary**에서 가상 회차, 팀원, 인증 기록의 변경 전후를 봅니다. 전체 내역은 **Artifacts → migration-comparison**의 `comparison.json`에 있습니다. |
+
+검사별 범위와 로컬 실행 명령은 [검증 방법](docs/VERIFICATION.md#pr에서-브라우저-스모크-테스트-실행)에 있습니다.
+
 ## 문서
 
 | 문서 | 내용 |
