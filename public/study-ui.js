@@ -3,7 +3,7 @@ import {DEFAULT_RULES,isFree,rulesLabel} from './rules.js';
 
 export function modeTag({rules=DEFAULT_RULES,historyOnly=false}={}){
  const mode=historyOnly?'history':rules.mode;
- return `<span class="mode-tag mode-${mode}">${historyOnly?'지난 회차 · 문제 기록':mode==='free'?'자율 목표형':'공통 문제형'}</span>`;
+ return `<span class="mode-tag mode-${mode}">${historyOnly?'지난 회차 문제 기록':mode==='free'?'자율 목표형':'공통 문제형'}</span>`;
 }
 export function workspaceHeading({title,kicker='',description='',mode,context='',actions='',back=''}={}){
  return `${back?`<div class="workspace-back">${back}</div>`:''}<header class="workspace-heading"><div class="workspace-heading-main"><div class="workspace-eyebrow">${mode?modeTag(mode):''}${kicker?`<span>${h(kicker)}</span>`:''}</div><h1>${h(title)}</h1>${description?`<p class="workspace-description">${h(description)}</p>`:''}${context?`<div class="workspace-context">${context}</div>`:''}</div>${actions?`<div class="workspace-actions">${actions}</div>`:''}</header>`;

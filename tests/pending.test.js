@@ -31,7 +31,7 @@ test('shared lists update with fresh evidence and never expose another member in
  const before=pendingSummary(state,round,members,{now});assert.match(before,/총 10건/);assert.match(before,/2026-10-27 화요일 23:59/);
  for(const p of round.problems)putCertificate(state,round.id,'me',p.id,{method:'photo'});
  const mine=pendingSummary(state,round,[members[0]],{now,url:'https://study.example/#home'});
- assert.match(mine,/총 0건/);assert.match(mine,/모두 인증 완료/);assert.ok(!mine.includes('팀원 ·'));assert.ok(!mine.includes(EXAMPLES[0].url));
+ assert.match(mine,/총 0건/);assert.match(mine,/모두 인증 완료/);assert.ok(!mine.includes('팀원 ('));assert.ok(!mine.includes(EXAMPLES[0].url));
  assert.match(mine,/아직 인증하지 않은 풀이도 포함/);assert.match(mine,/https:\/\/study.example\/#home/);
  assert.match(pendingSummary(state,round,members,{now}),/총 5건/);
 });

@@ -26,7 +26,7 @@ export function criticalRegions(data,problem,height){
    }
    // A Korean problem heading may share a row with the editor's English controls.
    if(!identity&&problem?.platform==='programmers'&&line.bbox?.y0<height*.25&&!/[〉>]/.test(line.text)){
-    const words=line.words||[],head=[];for(const word of words){if(!/^[가-힣0-9()[\]·:.,_-]+$/.test(word.text.trim()))break;head.push(word);}
+    const words=line.words||[],head=[];for(const word of words){if(!/^[가-힣0-9()[\]\u00B7:.,_-]+$/.test(word.text.trim()))break;head.push(word);}
     if(head.length&&head.length<=12&&compact(head.map(w=>w.text).join('')).length>=3&&!/문제설명|코딩테스트|입출력|제한사항/.test(compact(head.map(w=>w.text).join(''))))identity=bounds(head);
    }
   }

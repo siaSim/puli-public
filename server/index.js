@@ -38,7 +38,7 @@ async function consumeFlow(request,env,kind){
  const row=await env.DB.prepare('DELETE FROM flows WHERE hash = ? AND kind = ? AND expires_at > ? RETURNING sealed').bind(await hash(state),kind,Date.now()).first();
  if(!row)fail(400,'요청이 만료됐어요. 다시 시작해 주세요.');return unseal(row.sealed,env.ENCRYPTION_KEY);
 }
-function appManifest(base){return {name:'Puli Study '+new URL(base).hostname.split('.')[0],url:base,description:'코테 스터디 · 선택한 풀이 저장소만 읽고 자동 인증합니다.',public:true,redirect_url:base+'/setup/callback',callback_urls:[base+'/auth/github/callback'],setup_url:base+'/#connect',setup_on_update:true,request_oauth_on_install:false,hook_attributes:{url:base+'/api/github/webhook',active:true},default_permissions:{contents:'read'},default_events:['push']};}
+function appManifest(base){return {name:'Puli Study '+new URL(base).hostname.split('.')[0],url:base,description:'코딩테스트 스터디에서 선택한 풀이 저장소만 읽고 자동으로 인증합니다.',public:true,redirect_url:base+'/setup/callback',callback_urls:[base+'/auth/github/callback'],setup_url:base+'/#connect',setup_on_update:true,request_oauth_on_install:false,hook_attributes:{url:base+'/api/github/webhook',active:true},default_permissions:{contents:'read'},default_events:['push']};}
 
 async function handle(request,env,ctx){
  const url=new URL(request.url),path=url.pathname,method=request.method;

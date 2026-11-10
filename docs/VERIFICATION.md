@@ -1,6 +1,6 @@
 # 검증 방법
 
-별도의 로컬 DB 또는 개발 인스턴스에서 확인합니다. 팀원·문제·인증 기록은 재현에 필요한 예시만 새로 만듭니다.
+별도의 로컬 DB 또는 개발 인스턴스에서 확인합니다. 팀원, 문제와 인증 기록은 재현에 필요한 예시만 새로 만듭니다.
 
 ## 자동 검사
 
@@ -13,7 +13,7 @@ npm test
 npm run build:ocr
 ```
 
-테스트는 임시 D1과 모의 GitHub 응답으로 스터디 간 접근 제한, 초대와 정원, 회차·마감, GitHub 문제 대조, OCR 판정과 팀원 검토, 풀이 공유, 기존 DB 구조의 이전을 확인합니다. 프로세스가 제한된 환경에서는 `node --test --test-concurrency=1 tests/*.test.js`로 순차 실행합니다. OCR 빌드 후에는 `public/vendor/ocr/NOTICE.txt`에서 라이선스 고지를 확인할 수 있습니다.
+테스트는 임시 D1과 모의 GitHub 응답으로 스터디 간 접근 제한, 초대와 정원, 회차와 마감, GitHub 문제 대조, OCR 판정과 팀원 검토, 풀이 공유, 기존 DB 구조의 이전을 확인합니다. 프로세스가 제한된 환경에서는 `node --test --test-concurrency=1 tests/*.test.js`로 순차 실행합니다. OCR 빌드 후에는 `public/vendor/ocr/NOTICE.txt`에서 라이선스 고지를 확인할 수 있습니다.
 
 ## 새 설치 확인
 

@@ -75,7 +75,7 @@ export async function updateRound(env,session,id,data){
  const row=await one(env,'SELECT * FROM rounds WHERE id = ? AND study_id=?',id,studyId(session));if(!row)fail(404,'회차를 찾을 수 없어요.');
  if(!Number.isInteger(data.revision)||data.revision!==row.revision)fail(409,'다른 곳에서 회차를 수정했어요. 새로고침 후 다시 수정해 주세요.',{revision:'다른 곳에서 회차를 수정했어요. 새로고침 후 최신 내용을 확인해 주세요.'});
  const original=asRound(row);
- for(const [key,value] of Object.entries({startDate:original.startDate,historyOnly:original.historyOnly,number:original.number}))if(data[key]!==undefined&&data[key]!==value)fail(400,'출제일과 회차 종류·번호는 수정할 수 없어요.');
+ for(const [key,value] of Object.entries({startDate:original.startDate,historyOnly:original.historyOnly,number:original.number}))if(data[key]!==undefined&&data[key]!==value)fail(400,'출제일과 회차 종류와 번호는 수정할 수 없어요.');
  if(data.historyKey!==undefined)fail(400,'출처 식별자는 수정할 수 없어요.');
  const merged={...original,...data,startDate:original.startDate,historyOnly:original.historyOnly};
  if(original.historyOnly){

@@ -36,7 +36,7 @@ export async function saveShare(env,s,data){
  }
  if(data.consent!==true)fail(400,'초대된 팀원에게 코드와 메모를 공유한다는 확인이 필요해요.');
  const code=typeof data.code==='string'?data.code:'',note=typeof data.note==='string'?data.note:'',language=typeof data.language==='string'?data.language.trim():'';
- if(!code.trim()||code.length>24000||new TextEncoder().encode(code).length>65536||note.length>4000||language.length>30)fail(400,'코드는 24,000자·64KB, 메모는 4,000자 이내로 입력해 주세요.');
+ if(!code.trim()||code.length>24000||new TextEncoder().encode(code).length>65536||note.length>4000||language.length>30)fail(400,'코드는 24,000자 이내이면서 64KB를 넘지 않아야 해요. 메모는 4,000자 이내로 입력해 주세요.');
  const proof=await one(env,'SELECT method FROM certificates WHERE round_id=? AND member_id=? AND problem_id=?',data.round,s.member_id,data.problem);
  if(!proof)fail(403,'이 문제의 인증을 완료한 뒤 풀이를 공유할 수 있어요.');
  const result=await run(env,`INSERT INTO solution_shares(round_id,member_id,problem_id,code,note,language,shared,revision,updated_at)

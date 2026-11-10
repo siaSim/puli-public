@@ -29,7 +29,7 @@ test('the full configured deadline minute is accepted and the next minute is lat
 test('free goals count distinct on-time certified problems, excluding pending and late evidence',()=>{
  const r={...round,rules:{...custom,mode:'free',problemCount:2}},state={rounds:[r],certificates:{variable:{me:{[problems[0].id]:{at:'2026-11-06T10:00:00+09:00'},[problems[1].id]:{at:'2026-11-08T20:31:00+09:00'}}}}};
  assert.equal(memberCount(state,r,'me'),1);assert.equal(goalCount(r),2);assert.deepEqual(pendingByMember(state,r,[{id:'me'}]),[]);
- assert.match(pendingSummary(state,r,[{id:'me',name:'나'}]),/1\/2문제 인증 · 1문제 남음/);assert.match(roundSummary(r),/각자 원하는 문제 2개/);
+ assert.match(pendingSummary(state,r,[{id:'me',name:'나'}]),/1\/2문제 인증, 1문제 남음/);assert.match(roundSummary(r),/각자 원하는 문제 2개/);
  assert.equal(validateRound({...r,problems:[]},{rules:r.rules}).valid,true);
 });
 test('common dashboard renders the actual column count and free goals use per-member progress',()=>{

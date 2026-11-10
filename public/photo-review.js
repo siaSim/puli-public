@@ -1,6 +1,6 @@
 import {escapeHTML as h,roundLabel} from './core.js';
 
-export const photoStatus=s=>s.status==='pending'?'팀원 확인 대기':s.status==='rejected'?'반려 · 다시 제출':s.status==='superseded'?'종료된 요청':s.reviewedBy?'팀원 확인 완료':'OCR 대조 일치';
+export const photoStatus=s=>s.status==='pending'?'팀원 확인 대기':s.status==='rejected'?'반려 (다시 제출 필요)':s.status==='superseded'?'종료된 요청':s.reviewedBy?'팀원 확인 완료':'OCR 대조 일치';
 export function photoReviewPanel({state,members,icon,avatar}) {
  const pending=(state.photoSubmissions||[]).filter(s=>s.status==='pending').sort((a,b)=>a.submittedAt.localeCompare(b.submittedAt));
  if(!pending.length)return '';

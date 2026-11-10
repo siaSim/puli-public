@@ -21,14 +21,14 @@ export function loginLayout(content, {aside = '', label = '코딩테스트 스�
     <main id="main-content" class="login-content${aside ? ' login-split' : ''}${invite ? ' login-invitation' : ''}" aria-labelledby="login-title" tabindex="-1">
       ${invite ? intro + panel : panel + intro}
     </main>
-    <footer class="login-footer">풀이 · 코딩테스트 스터디</footer>
+    <footer class="login-footer">코딩테스트 스터디 풀이</footer>
   </div>`;
 }
 
 export function loginDocument(title, content, options) {
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>${h(title)} · 풀이</title><link rel="stylesheet" href="/styles.css">
+    <title>${h(title)} | 풀이</title><link rel="stylesheet" href="/styles.css">
     </head><body><a class="skip-link" href="#main-content">본문으로 이동</a>
     ${loginLayout(content, options)}</body></html>`;
 }

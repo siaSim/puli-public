@@ -84,7 +84,7 @@ export function historyDeadline(round) {
 }
 export function roundSummary(round,members=[]) {
   const schedule=round.historyOnly ? `출제일: ${round.startDate}\n마감: ${historyDeadline(round)}${round.historyMeta?.author?'\n원문 출제: '+round.historyMeta.author:''}${round.historyMeta?.note?'\n'+round.historyMeta.note:''}` : `마감: ${round.deadlineDate} ${deadlineLabel(round)} (한국 시간)${round.setterName||members.length?'\n출제: '+setterLabel(round,members):''}`;
-  return `[풀이 · ${roundLabel(round)}]\n${round.title}\n${schedule}\n\n${(isFree(round)?`각자 원하는 문제 ${round.rules.problemCount}개를 기간 내 인증해 주세요.`:round.problems.map((p,i)=>`${i+1}. ${p.title}\n${p.url}`).join('\n\n'))}\n\n${round.historyOnly?'지난 문제 목록입니다. 당시 인증 기록은 포함하지 않습니다.':isFree(round)?'같은 문제는 기간당 한 번만 집계합니다.':'다시 풀고 인증해 주세요.'}`;
+  return `[풀이 ${roundLabel(round)}]\n${round.title}\n${schedule}\n\n${(isFree(round)?`각자 원하는 문제 ${round.rules.problemCount}개를 기간 내 인증해 주세요.`:round.problems.map((p,i)=>`${i+1}. ${p.title}\n${p.url}`).join('\n\n'))}\n\n${round.historyOnly?'지난 문제 목록입니다. 당시 인증 기록은 포함하지 않습니다.':isFree(round)?'같은 문제는 기간당 한 번만 집계합니다.':'다시 풀고 인증해 주세요.'}`;
 }
 export function setterLabel(round,members=[]) {
   return members.find(m=>m.id===round.setter)?.name||round.setterName||round.historyMeta?.author||'출제자 미지정';

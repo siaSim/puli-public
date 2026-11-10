@@ -13,7 +13,7 @@ export async function rememberFreeProblem(env,round,problem,memberId){
  return result;
 }
 export async function addFreeProblem(env,s,data){
- if(!data||typeof data!=='object'||Array.isArray(data)||typeof data.round!=='string'||data.round.length>120||!['leetcode','programmers'].includes(data.platform)||typeof data.url!=='string'||data.url.length>2048||typeof data.title!=='string'||!data.title.trim()||data.title.trim().length>120)fail(400,'플랫폼과 문제 링크·제목을 입력해 주세요.');
+ if(!data||typeof data!=='object'||Array.isArray(data)||typeof data.round!=='string'||data.round.length>120||!['leetcode','programmers'].includes(data.platform)||typeof data.url!=='string'||data.url.length>2048||typeof data.title!=='string'||!data.title.trim()||data.title.trim().length>120)fail(400,'플랫폼과 문제 링크와 제목을 입력해 주세요.');
  const row=await roundRow(env,data.round,studyId(s));if(!row)fail(404,'목표 기간을 찾을 수 없어요.');
  const round=asRound(row);
  if(!isFree(round))fail(400,'자율 목표형 기간에서만 개인 문제를 추가할 수 있어요.');

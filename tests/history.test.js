@@ -24,7 +24,7 @@ test('historical sets preserve actual problem counts, tolerate empty unused slot
 test('date-based archives display missing deadlines and source authors without inventing round numbers or Tuesday cutoffs',()=>{
  const r={id:'source',number:-1,title:'2026.06.22 출제 문제',startDate:'2026-06-22',deadlineDate:null,historyOnly:true,historyMeta:{source:'kakao',dateBased:true,deadlineKnown:false,author:'원문 작성자',note:'프로젝트 기간 자율 참여'},problems:[EXAMPLES[1],EXAMPLES[0]]};
  const html=dashboard({state:{rounds:[r],activeRoundId:r.id,certificates:{}},members:[{id:'me',name:'운영자'}],icon:()=>'',avatar:()=>''});
- assert.ok(html.includes('2026.06.22 출제'));assert.ok(html.includes('마감 미기재'));assert.ok(html.includes('출제 원문 작성자'));assert.ok(html.includes('LeetCode 1 · 프로그래머스 1'));assert.ok(html.includes('프로젝트 기간 자율 참여'));
+ assert.ok(html.includes('2026.06.22 출제'));assert.ok(html.includes('마감 미기재'));assert.ok(html.includes('출제 원문 작성자'));assert.ok(html.includes('LeetCode 1문제, 프로그래머스 1문제'));assert.ok(html.includes('프로젝트 기간 자율 참여'));
  assert.ok(!html.includes('-1회차'));assert.ok(!html.includes('화요일 23:59'));assert.equal((html.match(/class="problem-title"/g)||[]).length,2);
  const summary=roundSummary(r);assert.match(summary,/출제일: 2026-06-22\n마감: 미기재/);assert.ok(!summary.includes('-1회차'));assert.ok(!summary.includes('화요일'));
  const known=roundSummary({...r,deadlineDate:'2026-06-29',historyMeta:{...r.historyMeta,deadlineKnown:true,deadlineLabel:'2026.06.29 오전 (시각 미기재)'}});assert.ok(known.includes('2026.06.29 오전 (시각 미기재)'));
@@ -33,7 +33,7 @@ test('problem-only records never add certifications or missed rounds to the gras
  const state=createSeed(new Date('2026-10-21T01:00:00+09:00'));state.rounds[0].historyOnly=true;
  assert.equal(dailyActivity(state,'me',{now:Date.parse('2026-10-21T02:00:00+09:00')}).total,0);
  const html=dashboard({state,members:[{id:'me',name:'테스트 운영자',login:'fixture-owner'}],icon:()=>'',avatar:()=>''});
- assert.ok(html.includes('지난 회차 · 문제 기록'));assert.ok(html.includes('당시 인증 여부는 옮기지 않았으며'));
+ assert.ok(html.includes('지난 회차 문제 기록'));assert.ok(html.includes('당시 인증 여부는 옮기지 않았으며'));
  assert.ok(!html.includes('data-action="open-proof"'));assert.ok(!html.includes('data-action="sync"'));
  assert.ok(!html.includes('내 미인증'));assert.ok(!html.includes('class="team-matrix"'));assert.ok(!html.includes('class="contribution-square'));
  assert.equal((html.match(/class="problem-title"/g)||[]).length,5);

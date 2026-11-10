@@ -19,7 +19,7 @@ export async function recognizePhoto(file,{signal,onProgress=()=>{},problem,assi
   const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();bitmap=null;
   const theme=imageTheme(ctx.getImageData(0,0,canvas.width,canvas.height).data),base=new URL('./vendor/ocr/',import.meta.url).href;
   const creating=Tesseract.createWorker(problem?.platform==='leetcode'?'eng':['kor','eng'],1,{workerPath:base+'worker.min.js',corePath:base,langPath:base+'lang',workerBlobURL:false,logger:message=>{
-   if(!signal?.aborted)onProgress(message.status==='recognizing text'?`${stage} · ${Math.round((message.progress||0)*100)}%`:'인식 준비 중 · 처음에는 조금 걸릴 수 있어요.');
+   if(!signal?.aborted)onProgress(message.status==='recognizing text'?`${stage} ${Math.round((message.progress||0)*100)}%`:'인식을 준비하고 있어요. 처음에는 조금 걸릴 수 있어요.');
   }}).then(created=>{worker=created;if(signal?.aborted||timedOut)stop();return created;});
   await Promise.race([creating,stopped]);check();await worker.setParameters({user_defined_dpi:'300'});
   const runs=[];
@@ -45,7 +45,7 @@ export async function recognizePhoto(file,{signal,onProgress=()=>{},problem,assi
     const data=ctx.getImageData(rect.left,rect.top,rect.width,rect.height),enhanced=imageTheme(data.data)==='dark'?enhancePixels(data.data,{normalize:true}):{data:data.data};data.data.set(enhanced.data);source.getContext('2d').putImageData(data,0,0);
     const factor=Math.min(3,2000/rect.width,Math.sqrt(1000000/(rect.width*rect.height))),crop=document.createElement('canvas');crop.width=Math.ceil(rect.width*factor)+30;crop.height=Math.ceil(rect.height*factor)+30;
     const c=crop.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,crop.width,crop.height);c.drawImage(source,15,15,crop.width-30,crop.height-30);
-    try{await read(crop,box.kind,box.kind==='identity'?'문제 이름·주소 확대 확인':'통과 결과 확대 확인','7');}finally{source.width=crop.width=1;source.height=crop.height=1;}
+    try{await read(crop,box.kind,box.kind==='identity'?'문제 이름과 주소 확대 확인':'통과 결과 확대 확인','7');}finally{source.width=crop.width=1;source.height=crop.height=1;}
    }
   }
   return finish();
