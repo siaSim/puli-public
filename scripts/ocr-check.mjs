@@ -33,7 +33,7 @@ async function serve(source, engine) {
       const path = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
       if (path === '/') {
         response.writeHead(200, {'Content-Type': 'text/html'});
-        response.end('<!doctype html><meta charset="utf-8"><title>Puli OCR check</title>');
+        response.end('<!doctype html><meta charset="utf-8"><title>GEUMGYUL OCR check</title>');
         return;
       }
       const directory = path.startsWith(assetsPrefix) ? engine : publicRoot;
@@ -93,11 +93,11 @@ function htmlReport(rows) {
   const details = (version, result) =>
     `<details><summary>${version} OCR 결과와 판정 근거</summary><p>${h(result.reason)}${Number.isFinite(result.confidence) ? ' (점수 ' + result.confidence + ')' : ''}</p><pre>${h(result.text)}</pre></details>`;
   return `<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>Puli OCR 비교</title><style>
+<title>GEUMGYUL OCR 비교</title><style>
 body{font:1rem/1.55 system-ui,sans-serif;margin:2rem auto;padding:0 1rem;max-width:56rem;color:#17212e}
 section{border-top:1px solid #dce3e8;padding:1rem 0}img{display:block;max-width:100%;height:auto}pre{white-space:pre-wrap;overflow-wrap:anywhere}
 summary{cursor:pointer}.changed{font-weight:bold;color:#9b3421}
-</style><h1>Puli OCR 비교</h1><p>판정이 바뀐 캡처를 위에 표시합니다. 이미지와 두 버전의 OCR 결과를 함께 볼 수 있습니다.</p>
+</style><h1>GEUMGYUL OCR 비교</h1><p>판정이 바뀐 캡처를 위에 표시합니다. 이미지와 두 버전의 OCR 결과를 함께 볼 수 있습니다.</p>
 ${rows.map(({id, label, expected, base, pr, changed}) => `<section>
 <h2>${h(label)}</h2><p class="${changed ? 'changed' : ''}">main ${verdicts[base.verdict]} → PR ${verdicts[pr.verdict]} (기대 ${verdicts[expected]})${changed ? ' / 판정 변경' : ''}</p>
 <a href="${id}.png"><img src="${id}.png" alt="${h(label)}"></a>

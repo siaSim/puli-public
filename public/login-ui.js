@@ -12,23 +12,23 @@ export function loginLayout(content, {aside = '', label = '코딩테스트 스�
   const panel = `<section class="login-panel" aria-labelledby="login-title">${content}</section>`;
   return `<div class="login-page">
     <header class="login-header">
-      <a class="brand" href="/#home" aria-label="푸리 홈">
+      <a class="brand" href="/#home" aria-label="금귤 홈">
         <span class="brand-mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 6-6 6 6 6m6-12 6 6-6 6"/></svg></span>
-        <span class="brand-name">푸리</span>
+        <span class="brand-name">금귤</span>
       </a>
       <span class="login-access">${h(label)}</span>
     </header>
     <main id="main-content" class="login-content${aside ? ' login-split' : ''}${invite ? ' login-invitation' : ''}" aria-labelledby="login-title" tabindex="-1">
       ${invite ? intro + panel : panel + intro}
     </main>
-    <footer class="login-footer">코딩테스트 스터디 푸리</footer>
+    <footer class="login-footer">코딩테스트 스터디 금귤</footer>
   </div>`;
 }
 
 export function loginDocument(title, content, options) {
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>${h(title)} | 푸리</title><link rel="stylesheet" href="/styles.css">
+    <title>${h(title)} | 금귤</title><link rel="stylesheet" href="/styles.css">
     </head><body><a class="skip-link" href="#main-content">본문으로 이동</a>
     ${loginLayout(content, options)}</body></html>`;
 }
