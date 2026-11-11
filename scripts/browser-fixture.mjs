@@ -1,4 +1,4 @@
-import {randomBytes} from 'node:crypto';
+import {generateKeyPairSync,randomBytes} from 'node:crypto';
 import {readFile, readdir} from 'node:fs/promises';
 import {join} from 'node:path';
 import {build} from 'esbuild';
@@ -36,6 +36,9 @@ export async function createBrowserStudy(source) {
       if (request.url.startsWith('https://api.github.com/user/installations?')) {
         return Response.json({installations: [], total_count: 0});
       }
+      if (request.url === 'https://api.github.com/app') {
+        return Response.json({id: 1, slug: 'geumgyul-smoke'});
+      }
       return new Response('외부 요청은 가상 스터디에서 사용할 수 없습니다.', {status: 503});
     },
   });
@@ -47,7 +50,12 @@ export async function createBrowserStudy(source) {
       const statements = unstable_splitSqlQuery(sql).filter(text => text.trim());
       if (statements.length) await db.batch(statements.map(statement => db.prepare(statement)));
     }
-    const github = await seal({id: 1, slug: 'puli-smoke'}, secret);
+    const {privateKey} = generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      privateKeyEncoding: {type: 'pkcs1', format: 'pem'},
+      publicKeyEncoding: {type: 'spki', format: 'pem'},
+    });
+    const github = await seal({id: 1, slug: 'geumgyul-smoke', pem: privateKey}, secret);
     await db.prepare('INSERT INTO config VALUES (?,?)').bind('github', github).run();
     const sessions = [];
     const env = {DB: db, ENCRYPTION_KEY: secret};
