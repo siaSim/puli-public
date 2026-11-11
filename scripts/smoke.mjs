@@ -39,6 +39,11 @@ await mkdir(results, {recursive: true});
 try {
   const {worker: fixture, origin, sessions} = await createBrowserStudy(source);
   worker = fixture;
+  const repositories = await worker.dispatchFetch(origin + '/api/repositories', {
+    headers: {Cookie: 'puli_session=' + sessions[0].raw},
+  });
+  assert.equal(repositories.status, 200, '가상 GitHub 앱의 저장소 연결 상태를 읽어야 합니다.');
+  assert.equal((await repositories.json()).installURL, 'https://github.com/apps/geumgyul-smoke/installations/new');
   browser = await chromium.launch({executablePath: process.env.PULI_SMOKE_CHROMIUM});
   const owner = await openBrowserPage(origin, sessions[0]);
   const reviewer = await openBrowserPage(origin, sessions[1]);
