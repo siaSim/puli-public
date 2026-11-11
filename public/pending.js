@@ -9,12 +9,12 @@ export function pendingByMember(state, round, members, {today=kstDate()}={}) {
 }
 
 export function pendingSummary(state, round, members, {now=new Date(),url=''}={}) {
- if(isFree(round)){const target=goalCount(round);return `[푸리 ${roundLabel(round)} 자율 목표 현황]\n${round.title}\n마감: ${round.deadlineDate} ${deadlineLabel(round)} (한국 시간)\n\n${members.map(m=>{const n=memberCount(state,round,m.id);return `${m.name} (${n}/${target}문제 인증, ${Math.max(0,target-n)}문제 남음)`;}).join('\n')}\n\n기간 내 인증 기록 기준입니다.${url?'\n스터디 현황: '+url:''}`;}
+ if(isFree(round)){const target=goalCount(round);return `[금귤 ${roundLabel(round)} 자율 목표 현황]\n${round.title}\n마감: ${round.deadlineDate} ${deadlineLabel(round)} (한국 시간)\n\n${members.map(m=>{const n=memberCount(state,round,m.id);return `${m.name} (${n}/${target}문제 인증, ${Math.max(0,target-n)}문제 남음)`;}).join('\n')}\n\n기간 내 인증 기록 기준입니다.${url?'\n스터디 현황: '+url:''}`;}
  const rows=pendingByMember(state,round,members,{today:kstDate(now)});
  if(!rows.length)return '';
  const checked=new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}).format(now);
  const total=rows.reduce((sum,row)=>sum+row.problems.length,0);
- return `[푸리 ${roundLabel(round)} 미인증 문제]\n${round.title}\n마감: ${round.deadlineDate} ${deadlineLabel(round)} (한국 시간)\n조회: ${checked} (한국 시간), 총 ${total}건\n\n${rows.map(({member,problems})=>`${member.name} (${problems.length}/${round.problems.length}개 미인증)\n${problems.length?problems.map(p=>`- ${p.platform==='leetcode'?'LeetCode':'프로그래머스'}: ${p.title}${photoSubmission(state,round.id,member.id,p.id)?.status==='pending'?' (사진 확인 대기)':''}\n  ${p.url}`).join('\n'):'모두 인증 완료'}`).join('\n\n')}\n\n인증 기록 기준입니다. 아직 인증하지 않은 풀이도 포함될 수 있어요.${url?'\n스터디 현황: '+url:''}`;
+ return `[금귤 ${roundLabel(round)} 미인증 문제]\n${round.title}\n마감: ${round.deadlineDate} ${deadlineLabel(round)} (한국 시간)\n조회: ${checked} (한국 시간), 총 ${total}건\n\n${rows.map(({member,problems})=>`${member.name} (${problems.length}/${round.problems.length}개 미인증)\n${problems.length?problems.map(p=>`- ${p.platform==='leetcode'?'LeetCode':'프로그래머스'}: ${p.title}${photoSubmission(state,round.id,member.id,p.id)?.status==='pending'?' (사진 확인 대기)':''}\n  ${p.url}`).join('\n'):'모두 인증 완료'}`).join('\n\n')}\n\n인증 기록 기준입니다. 아직 인증하지 않은 풀이도 포함될 수 있어요.${url?'\n스터디 현황: '+url:''}`;
 }
 
 export function pendingPanel({state,members,icon,avatar,pendingMember='all'},round) {

@@ -38,7 +38,7 @@ async function consumeFlow(request,env,kind){
  const row=await env.DB.prepare('DELETE FROM flows WHERE hash = ? AND kind = ? AND expires_at > ? RETURNING sealed').bind(await hash(state),kind,Date.now()).first();
  if(!row)fail(400,'요청이 만료됐어요. 다시 시작해 주세요.');return unseal(row.sealed,env.ENCRYPTION_KEY);
 }
-function appManifest(base){return {name:'Puli Study '+new URL(base).hostname.split('.')[0],url:base,description:'코딩테스트 스터디에서 선택한 풀이 저장소만 읽고 자동으로 인증합니다.',public:true,redirect_url:base+'/setup/callback',callback_urls:[base+'/auth/github/callback'],setup_url:base+'/#connect',setup_on_update:true,request_oauth_on_install:false,hook_attributes:{url:base+'/api/github/webhook',active:true},default_permissions:{contents:'read'},default_events:['push']};}
+function appManifest(base){return {name:'GEUMGYUL '+new URL(base).hostname.split('.')[0],url:base,description:'코딩테스트 스터디에서 선택한 풀이 저장소만 읽고 자동으로 인증합니다.',public:true,redirect_url:base+'/setup/callback',callback_urls:[base+'/auth/github/callback'],setup_url:base+'/#connect',setup_on_update:true,request_oauth_on_install:false,hook_attributes:{url:base+'/api/github/webhook',active:true},default_permissions:{contents:'read'},default_events:['push']};}
 
 async function handle(request,env,ctx){
  const url=new URL(request.url),path=url.pathname,method=request.method;
@@ -190,7 +190,7 @@ async function repositoryChoices(env,s){
 async function connectRepository(request,env,s){
  const data=await bodyJSON(request);if(!['leetcode','programmers'].includes(data.platform)||!/^\d+$/.test(String(data.repoId))||!/^\d+$/.test(String(data.installationId)))fail(400,'연결할 저장소를 선택해 주세요.');
  const config=await githubConfig(env),userToken=s.userToken;
- const installs=await github('/user/installations?per_page=100',userToken);const install=installs.installations.find(i=>String(i.id)===String(data.installationId)&&String(i.app_id)===String(config.id));if(!install)fail(403,'본인이 설치한 푸리 앱의 저장소만 연결할 수 있어요.');
+ const installs=await github('/user/installations?per_page=100',userToken);const install=installs.installations.find(i=>String(i.id)===String(data.installationId)&&String(i.app_id)===String(config.id));if(!install)fail(403,'본인이 설치한 금귤 앱의 저장소만 연결할 수 있어요.');
  const list=await github(`/user/installations/${install.id}/repositories?per_page=100`,userToken);const repo=list.repositories.find(r=>String(r.id)===String(data.repoId));if(!repo)fail(403,'선택한 저장소에 접근할 수 없어요. GitHub 앱 권한을 확인해 주세요.');
  await run(env,'INSERT INTO repositories(member_id,platform,repo_id,full_name,installation_id,branch,private) VALUES (?,?,?,?,?,?,?) ON CONFLICT(member_id,platform) DO UPDATE SET repo_id=excluded.repo_id,full_name=excluded.full_name,installation_id=excluded.installation_id,branch=excluded.branch,private=excluded.private,checked_at=NULL,sync_cursor=NULL,sync_error=NULL,updated_at=0',s.member_id,data.platform,String(repo.id),repo.full_name,String(install.id),repo.default_branch,repo.private?1:0);
  return json({ok:true});
