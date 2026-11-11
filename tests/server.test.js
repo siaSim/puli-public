@@ -7,7 +7,7 @@ import {build} from 'esbuild';
 import {Miniflare} from 'miniflare';
 import sharp from 'sharp';
 import {hash,seal,unseal,appJWT,encode} from '../server/crypto.js';
-import {sourceFile,pathMatches,readmeMatches,eligibleCommit,evidenceForCommit} from '../server/github.js';
+import {appInstallURL,sourceFile,pathMatches,readmeMatches,eligibleCommit,evidenceForCommit} from '../server/github.js';
 import {syncRepository} from '../server/sync.js';
 import {EXAMPLES,kstDate,nextTuesday,addDays} from '../public/core.js';
 import {latestRound} from '../server/store.js';
@@ -41,6 +41,16 @@ test('encrypted values reject a changed ciphertext and a different encryption ke
 test('GitHub App JWT supports GitHub PKCS1 PEM and has bounded expiry',async()=>{
  const jwt=await appJWT(config);const [head,payload,sig]=jwt.split('.');assert.equal(JSON.parse(Buffer.from(head,'base64url')).alg,'RS256');assert.equal(JSON.parse(Buffer.from(payload,'base64url')).iss,'42');assert.ok(verify('RSA-SHA256',Buffer.from(head+'.'+payload),key.publicKey,Buffer.from(sig,'base64url')));
 });
+test('installation link follows the current GitHub App slug and rejects an unrelated app',async()=>{
+ const fetcher=async(url,options)=>{
+  assert.equal(url,'https://api.github.com/app');
+  assert.match(options.headers.Authorization,/^Bearer /);
+  return Response.json({id:42,slug:'geumgyul-study'});
+ };
+ assert.equal(await appInstallURL(config,{fetcher}),'https://github.com/apps/geumgyul-study/installations/new');
+ await assert.rejects(appInstallURL(config,{fetcher:async()=>Response.json({id:99,slug:'other-app'})}));
+});
+
 test('extension source matching accepts actual unicode folders, rejects documents and wrong IDs',()=>{
  const file={filename:'프로그래머스/1/42840.\u2005모의고사/모의고사.py',status:'modified',additions:2,deletions:1};
  assert.ok(sourceFile(file));assert.ok(pathMatches(file,EXAMPLES[1]));assert.ok(!pathMatches(file,EXAMPLES[2]));assert.ok(pathMatches({filename:'0001-two-sum/0001-two-sum.py'},EXAMPLES[0]));

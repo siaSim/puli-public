@@ -2,7 +2,7 @@ import {addFreeProblem,FreeProblemError} from './free-problems.js';
 import {studySession,listStudies,createStudy,updateStudyRules,ensureAccount,StudyError} from './studies.js';
 import {asShare,readShare,saveShare,loadCertifiedCode,SolutionError} from './solutions.js';
 import {randomToken,hash,seal,unseal,encode,verifySignature} from './crypto.js';
-import {github,GitHubError} from './github.js';
+import {github,GitHubError,appInstallURL} from './github.js';
 import {one,many,run,asRound,hydrateRounds,roundRow} from './store.js';
 import {githubConfig,syncRepository} from './sync.js';
 import {validateRound,kstDate,escapeHTML as h} from '../public/core.js';
@@ -185,7 +185,7 @@ async function repositoryChoices(env,s){
   const r=await github(`/user/installations/${install.id}/repositories?per_page=100`,userToken);
   for(const repo of r.repositories)repos.push({id:String(repo.id),fullName:repo.full_name,private:repo.private,branch:repo.default_branch,installationId:String(install.id)});
  }
- return json({repositories:repos,installURL:`https://github.com/apps/${encodeURIComponent(config.slug)}/installations/new`,truncated:result.total_count>20||repos.length>=100});
+ return json({repositories:repos,installURL:await appInstallURL(config),truncated:result.total_count>20||repos.length>=100});
 }
 async function connectRepository(request,env,s){
  const data=await bodyJSON(request);if(!['leetcode','programmers'].includes(data.platform)||!/^\d+$/.test(String(data.repoId))||!/^\d+$/.test(String(data.installationId)))fail(400,'연결할 저장소를 선택해 주세요.');

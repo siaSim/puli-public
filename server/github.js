@@ -6,10 +6,15 @@ export class GitHubError extends Error {
 }
 export async function github(path, token, {method='GET',body,fetcher=fetch}={}) {
  if(!path.startsWith('/')||path.startsWith('//')) throw new Error('Invalid API path');
- const response=await fetcher('https://api.github.com'+path,{method,headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'Puli-Study',...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(12000)});
+ const response=await fetcher('https://api.github.com'+path,{method,headers:{Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','User-Agent':'GEUMGYUL-Study',...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(12000)});
  if(!response.ok) throw new GitHubError(response.status,Number(response.headers.get('retry-after')||0));
  if(response.status===204)return null;
  return response.json();
+}
+export async function appInstallURL(config,{fetcher=fetch}={}){
+ const app=await github('/app',await appJWT(config),{fetcher});
+ if(String(app.id)!==String(config.id)||typeof app.slug!=='string'||!/^[a-z0-9-]+$/i.test(app.slug))throw new GitHubError(502);
+ return `https://github.com/apps/${encodeURIComponent(app.slug)}/installations/new`;
 }
 export async function installationToken(config, repo, fetcher=fetch) {
  const result=await github(`/app/installations/${encodeURIComponent(repo.installation_id)}/access_tokens`,await appJWT(config),{method:'POST',body:{repository_ids:[Number(repo.repo_id)],permissions:{contents:'read',metadata:'read'}},fetcher});
