@@ -1,3 +1,4 @@
+import {unstable_splitSqlQuery} from 'wrangler';
 import test,{before,beforeEach,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile,readdir} from 'node:fs/promises';
@@ -29,7 +30,7 @@ beforeEach(async()=>{
  mf=new Miniflare({modules:true,script,compatibilityDate:'2026-05-22',d1Databases:['DB'],cf:false,fetchMock:mock,bindings:{APP_ORIGIN:base,ENCRYPTION_KEY:secret,OWNER_GITHUB_ID:'1'}});
  db=await mf.getD1Database('DB');env={DB:db,ENCRYPTION_KEY:secret};
  const migrations=(await readdir('migrations')).filter(f=>f.endsWith('.sql')).sort();
- for(const file of migrations.filter(f=>f<'0008'))for(const sql of(await readFile('migrations/'+file,'utf8')).split(';').filter(s=>s.trim()))await db.prepare(sql).run();
+ for(const file of migrations.filter(f=>f<'0008'))for(const sql of unstable_splitSqlQuery(await readFile('migrations/'+file,'utf8')).filter(s=>s.trim()))await db.prepare(sql).run();
  for(const [id,role,slot]of [['1','owner',0],['2','member',1]]){
   await db.prepare('INSERT INTO members(id,login,name,role,slot,joined_at) VALUES (?,?,?,?,?,?)').bind(id,'member'+id,'Member '+id,role,slot,'2026-01-01T00:00:00Z').run();
   await db.prepare('INSERT INTO sessions VALUES (?,?,?,?)').bind(await hash('study-'+id),id,await seal({token:'local-user-'+id},secret),Date.now()+3600000).run();
@@ -43,8 +44,8 @@ beforeEach(async()=>{
  await db.prepare('INSERT INTO solution_shares VALUES (?,?,?,?,?,?,?,?,?)').bind('original-round','1',EXAMPLES[0].id,'PRIVATE ORIGINAL CODE','풀이 메모','python',1,4,'2026-01-01T00:00:00Z').run();
  await db.prepare('INSERT INTO invite_links VALUES (?,?,?,?,?,?,?)').bind('study',await hash('q'.repeat(43)),await seal('q'.repeat(43),secret),'1',Date.now(),Date.now()+86400000,3).run();
  snapshot=await snapshotTables();
- for(const sql of(await readFile('migrations/0008_multiple_studies.sql','utf8')).split(';').filter(s=>s.trim()))await db.prepare(sql).run();
- for(const file of migrations.filter(f=>f>'0008_multiple_studies.sql'))for(const sql of(await readFile('migrations/'+file,'utf8')).split(';').filter(s=>s.trim()))await db.prepare(sql).run();
+ for(const sql of unstable_splitSqlQuery(await readFile('migrations/0008_multiple_studies.sql','utf8')).filter(s=>s.trim()))await db.prepare(sql).run();
+ for(const file of migrations.filter(f=>f>'0008_multiple_studies.sql'))for(const sql of unstable_splitSqlQuery(await readFile('migrations/'+file,'utf8')).filter(s=>s.trim()))await db.prepare(sql).run();
  // A newly registered account has no memberships, regardless of a legacy role field.
  await db.prepare("INSERT INTO members(id,login,name,role) VALUES ('3','member3','Member 3','owner')").run();
  await db.prepare('INSERT INTO sessions VALUES (?,?,?,?)').bind(await hash('study-3'),'3',await seal({token:'local-user-3'},secret),Date.now()+3600000).run();

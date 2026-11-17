@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DEFAULT_RULES,validateRules,blankProblems,nextDeadlineDate,goalCount} from '../public/rules.js';
-import {EXAMPLES,validateRound,isOnTime,deadlineExclusive,deadlineLabel,roundSummary,memberCount,kstDate} from '../public/core.js';
+import {EXAMPLES,validateRound,isOnTime,deadlineExclusive,deadlineLabel,roundSummary,memberCount,kstDate,studyPauseMode,studyWeekOffUntil} from '../public/core.js';
 import {dashboard} from '../public/dashboard.js';
 import {pendingSummary,pendingByMember} from '../public/pending.js';
 const custom={...DEFAULT_RULES,problemCount:3,leetcodeCount:0,schedule:'custom',deadlineTime:'20:30'};
@@ -29,7 +29,7 @@ test('the full configured deadline minute is accepted and the next minute is lat
 test('free goals count distinct on-time certified problems, excluding pending and late evidence',()=>{
  const r={...round,rules:{...custom,mode:'free',problemCount:2}},state={rounds:[r],certificates:{variable:{me:{[problems[0].id]:{at:'2026-11-06T10:00:00+09:00'},[problems[1].id]:{at:'2026-11-08T20:31:00+09:00'}}}}};
  assert.equal(memberCount(state,r,'me'),1);assert.equal(goalCount(r),2);assert.deepEqual(pendingByMember(state,r,[{id:'me'}]),[]);
- assert.match(pendingSummary(state,r,[{id:'me',name:'나'}]),/1\/2문제 인증, 1문제 남음/);assert.match(roundSummary(r),/각자 원하는 문제 2개/);
+ assert.match(pendingSummary(state,r,[{id:'me',name:'나'}]),/^\[금귤 .* 자율 목표 현황\][\s\S]*나 \(1\/2문제 인증, 1문제 남음\)/);assert.match(roundSummary(r),/각자 원하는 문제 2개/);
  assert.equal(validateRound({...r,problems:[]},{rules:r.rules}).valid,true);
 });
 test('common dashboard renders the actual column count and free goals use per-member progress',()=>{
@@ -43,4 +43,16 @@ test('the default weekly deadline advances a week after the configured closing m
  const r={...DEFAULT_RULES,weekday:0,deadlineTime:'20:30'};
  assert.equal(nextDeadlineDate('2026-11-08',r,Date.parse('2026-11-08T20:30:59+09:00')),'2026-11-08');
  assert.equal(nextDeadlineDate('2026-11-08',r,Date.parse('2026-11-08T20:31:00+09:00')),'2026-11-15');
+});
+
+test('a week off ends exactly after the study cutoff in Korea',()=>{
+ const minute=Date.parse('2026-11-10T23:59:59.999+09:00');
+ const end=Date.parse('2026-11-11T00:00:00+09:00');
+ assert.equal(studyWeekOffUntil(DEFAULT_RULES,minute),end);
+ assert.equal(studyWeekOffUntil(DEFAULT_RULES,end),Date.parse('2026-11-18T00:00:00+09:00'));
+ assert.equal(studyWeekOffUntil(custom,end),Date.parse('2026-11-16T00:00:00+09:00'));
+ assert.equal(studyPauseMode(end,minute),'week-off');
+ assert.equal(studyPauseMode(end,end),'active');
+ assert.equal(studyPauseMode(null,end),'active');
+ assert.equal(studyPauseMode(0,end),'paused');
 });

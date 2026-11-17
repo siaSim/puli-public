@@ -76,7 +76,7 @@ try {
   await reviewer.getByRole('button', {name: `가상 운영자, ${problem.title}, 사진 확인 대기`}).click();
   await reviewer.getByRole('img', {name: `${problem.title} 제출 원본 사진`}).waitFor();
   await post(reviewer, '/api/photo-submissions/' + submission.id + '/review', () =>
-    reviewer.getByRole('button', {name: '문제와 통과 결과 확인 후 승인'}).click());
+    reviewer.getByRole('button', {name: '문제 및 통과 확인 후 승인'}).click());
   completed.push(step);
 
   step = '인증 현황에 승인 결과 반영';

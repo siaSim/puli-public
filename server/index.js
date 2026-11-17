@@ -1,5 +1,5 @@
 import {addFreeProblem,FreeProblemError} from './free-problems.js';
-import {studySession,listStudies,createStudy,updateStudyRules,ensureAccount,StudyError} from './studies.js';
+import {studySession,listStudies,createStudy,updateStudyRules,updateStudyPause,ensureAccount,StudyError} from './studies.js';
 import {asShare,readShare,saveShare,loadCertifiedCode,SolutionError} from './solutions.js';
 import {randomToken,hash,seal,unseal,encode,verifySignature} from './crypto.js';
 import {github,GitHubError,appInstallURL} from './github.js';
@@ -12,6 +12,7 @@ import {createSession,sessionTokens,SessionError,returnPath} from './session.js'
 import {savePhotoSubmission,reviewPhoto,asSubmission,PhotoError} from './photos.js';
 import {checkInvite,inviteDetails,rotateInvite,joinFromInvite,InviteError} from './invites.js';
 import {loginDocument,loginHeading} from '../public/login-ui.js';
+import {sliceSummary,sliceHistory} from './slices.js';
 
 const PHOTO_LIMIT=350*1024;
 class HttpError extends Error {constructor(status,message){super(message);this.status=status;}}
@@ -38,7 +39,7 @@ async function consumeFlow(request,env,kind){
  const row=await env.DB.prepare('DELETE FROM flows WHERE hash = ? AND kind = ? AND expires_at > ? RETURNING sealed').bind(await hash(state),kind,Date.now()).first();
  if(!row)fail(400,'요청이 만료됐어요. 다시 시작해 주세요.');return unseal(row.sealed,env.ENCRYPTION_KEY);
 }
-function appManifest(base){return {name:'GEUMGYUL '+new URL(base).hostname.split('.')[0],url:base,description:'코딩테스트 스터디에서 선택한 풀이 저장소만 읽고 자동으로 인증합니다.',public:true,redirect_url:base+'/setup/callback',callback_urls:[base+'/auth/github/callback'],setup_url:base+'/#connect',setup_on_update:true,request_oauth_on_install:false,hook_attributes:{url:base+'/api/github/webhook',active:true},default_permissions:{contents:'read'},default_events:['push']};}
+function appManifest(base){return {name:'GEUMGYUL '+new URL(base).hostname.split('.')[0],url:base,description:'코테 스터디, 선택한 풀이 저장소만 읽고 자동 인증합니다.',public:true,redirect_url:base+'/setup/callback',callback_urls:[base+'/auth/github/callback'],setup_url:base+'/#connect',setup_on_update:true,request_oauth_on_install:false,hook_attributes:{url:base+'/api/github/webhook',active:true},default_permissions:{contents:'read'},default_events:['push']};}
 
 async function handle(request,env,ctx){
  const url=new URL(request.url),path=url.pathname,method=request.method;
@@ -135,20 +136,27 @@ async function handle(request,env,ctx){
  if(path==='/api/repositories/disconnect'&&method==='POST'){const data=await bodyJSON(request);await run(env,'DELETE FROM repositories WHERE member_id = ? AND platform = ?',s.member_id,data.platform);return json({ok:true});}
  s=await studySession(env,s,request.headers.get('X-Puli-Study'));
  if(path==='/api/studies/settings'&&method==='PATCH')return json(await updateStudyRules(env,s,await bodyJSON(request,2048)));
+ if(path==='/api/studies/pause'&&method==='PATCH')return json(await updateStudyPause(env,s,await bodyJSON(request,512)));
  if(path==='/api/free-problems'&&method==='POST')return json(await addFreeProblem(env,s,await bodyJSON(request,4096)),201);
  if(path==='/api/invites'&&method==='GET')return json(await inviteDetails(env,s,origin(env,request)));
  if(path==='/api/invites'&&method==='POST')return json(await rotateInvite(env,s,await bodyJSON(request,1024),origin(env,request)),201);
+ if(path==='/api/slices'&&method==='GET'){
+  const scope=url.searchParams.get('scope')||'personal',raw=url.searchParams.get('offset')||'0';
+  if(!['personal','team'].includes(scope)||!/^\d{1,6}$/.test(raw))fail(400,'조각 내역 요청을 확인해 주세요.');
+  return json(await sliceHistory(env,s.member_id,s.study_id,scope,Number(raw)));
+ }
  if(path==='/api/state'&&method==='GET'){
-  const [members,rounds,certificates,repositories,submissions,shares]=await Promise.all([
+  const [members,rounds,certificates,repositories,submissions,shares,slices]=await Promise.all([
    many(env,'SELECT m.id,m.login,m.name,sm.role,sm.slot,sm.joined_at FROM study_memberships sm JOIN members m ON m.id=sm.member_id WHERE sm.study_id=? ORDER BY sm.slot',s.study_id),
    many(env,'SELECT * FROM rounds WHERE study_id=? ORDER BY start_date DESC,number DESC',s.study_id),
    many(env,'SELECT c.* FROM certificates c JOIN rounds r ON r.id=c.round_id WHERE r.study_id=? ORDER BY c.observed_at DESC LIMIT 2600',s.study_id),
    many(env,'SELECT platform,full_name,branch,private,checked_at,sync_error,sync_cursor FROM repositories WHERE member_id=?',s.member_id),
    many(env,'SELECT p.* FROM photo_submissions p JOIN rounds r ON r.id=p.round_id WHERE r.study_id=? AND p.rowid IN (SELECT MAX(rowid) FROM photo_submissions GROUP BY round_id,member_id,problem_id) ORDER BY p.submitted_at DESC LIMIT 500',s.study_id),
-   many(env,'SELECT ss.round_id,ss.member_id,ss.problem_id,ss.language,ss.shared,ss.revision,ss.updated_at FROM solution_shares ss JOIN rounds r ON r.id=ss.round_id WHERE r.study_id=? AND (ss.shared=1 OR ss.member_id=?)',s.study_id,s.member_id)
+   many(env,'SELECT ss.round_id,ss.member_id,ss.problem_id,ss.language,ss.shared,ss.revision,ss.updated_at FROM solution_shares ss JOIN rounds r ON r.id=ss.round_id WHERE r.study_id=? AND (ss.shared=1 OR ss.member_id=?)',s.study_id,s.member_id),
+   sliceSummary(env,s.member_id,s.study_id)
   ]);
   const proofs={};for(const c of certificates){proofs[c.round_id]??={};proofs[c.round_id][c.member_id]??={};proofs[c.round_id][c.member_id][c.problem_id]={...JSON.parse(c.evidence),method:c.method,at:c.at,observedAt:c.observed_at,example:false};}
-  return json({study:s.study,members,rounds:(await hydrateRounds(env,rounds)).map(asRound),certificates:proofs,photoSubmissions:submissions.map(asSubmission),solutionShares:shares.map(asShare),repositories,user:{id:s.member_id,login:s.login,name:s.name,role:s.role},retentionDays:90});
+  return json({study:s.study,members,rounds:(await hydrateRounds(env,rounds)).map(asRound),certificates:proofs,photoSubmissions:submissions.map(asSubmission),solutionShares:shares.map(asShare),repositories,slices,user:{id:s.member_id,login:s.login,name:s.name,role:s.role},retentionDays:90});
  }
  if(path==='/api/solution-shares'&&method==='GET')return json(await readShare(env,s,Object.fromEntries(url.searchParams)));
  if(path==='/api/solution-shares'&&method==='POST')return json(await saveShare(env,s,await bodyJSON(request,100000)));
