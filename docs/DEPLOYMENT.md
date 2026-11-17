@@ -115,3 +115,11 @@ chmod 600 ../puli-private-backups/before-update.sql
 Worker 버전 복구와 DB 복구는 별개입니다. 새 스키마와 맞지 않는 예전 Worker로 단순히 되돌리지 않습니다. 배포 후 새로 생긴 기록도 보존하고, 백업을 별도 DB에 복원해 행, 사진 바이트, 외래키를 검증한 뒤 전환 절차를 정합니다. 이 문서의 명령은 운영 DB 삭제, 덮어쓰기와 키 재발급을 수행하지 않습니다. 다중 스터디 이전의 주의점은 [데이터 이전 안내](MULTI-STUDY.md#이전과-복구)를 확인하세요.
 
 [README로 돌아가기](../README.md), [로컬 설치](INSTALLATION.md)
+
+## GitHub Actions로 운영 배포
+
+운영자가 직접 설정한 인스턴스에서는 `main`에 병합된 커밋을 `Deploy production` 워크플로로 배포할 수 있습니다. `production` 환경에 운영자의 필수 승인과 `main` 브랜치 제한을 설정합니다. 이 환경의 Actions 비밀값에 Cloudflare API 토큰, 계정 ID, 해당 인스턴스의 `wrangler.production.json`과 운영 origin, 운영자가 확인한 마이그레이션 파일 목록과 해시를 각각 보관해야 합니다. 실제 값과 스터디 데이터는 저장소에 커밋하지 않습니다.
+
+배포 흐름은 테스트를 통과한 다음 운영자의 GitHub 환경 승인을 기다립니다. 운영자는 **Actions → Deploy production → 해당 실행 → Review deployments**에서 `production`을 선택해 승인하거나 거절합니다. 승인된 배포는 운영 Worker의 DB 바인딩, GitHub 소유자, 기존 암호화 키의 존재와 마이그레이션 파일이 운영자가 확인한 해시 목록과 일치하는지 검사합니다. 실제 DB는 이 단계에서 조회하지 않으므로 운영자가 기준을 만들 때 적용 상태를 확인해야 합니다. 파일이 다르면 DB를 수정하지 않고 배포를 중단합니다. 새 마이그레이션이 있는 경우 운영자는 DB 백업과 가상 DB의 `/migration-check`를 확인하고, 기존 서비스 업데이트 절차로 마이그레이션을 적용하고 DB의 적용 목록과 파일을 대조한 뒤 비밀값 `GEUMGYUL_MIGRATION_MANIFEST`를 갱신하고 Actions에서 다시 실행해야 합니다. 기존 암호화 키를 새로 생성하거나 교체하지 않습니다.
+
+PR의 코드, 마이그레이션, 워크플로와 의존성은 운영자가 검토한 뒤 병합하세요. `main`에 병합된 코드는 배포 권한으로 실행될 수 있습니다. 포크에서 열린 PR의 검사에는 배포 비밀값을 제공하지 않습니다. 승인 대기와 배포 결과는 GitHub Actions의 **Deploy production**에서 확인하며, health 확인은 로그인과 실제 인증에 대한 전체 검증을 대신하지 않습니다.

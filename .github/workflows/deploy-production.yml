@@ -1,0 +1,71 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+
+  deploy:
+    needs: verify
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm run build:ocr
+      - name: Prepare private production configuration
+        env:
+          PRODUCTION_CONFIG: ${{ secrets.GEUMGYUL_PRODUCTION_CONFIG }}
+        run: |
+          node -e 'const fs = require("fs"); const config = JSON.parse(process.env.PRODUCTION_CONFIG); config.keep_vars = true; config.secrets = {required: ["ENCRYPTION_KEY"]}; fs.writeFileSync("wrangler.production.json", JSON.stringify(config), {mode: 0o600});'
+      - name: Check existing bindings and migration state
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PULI_CONFIG: wrangler.production.json
+          GEUMGYUL_MIGRATION_MANIFEST: ${{ secrets.GEUMGYUL_MIGRATION_MANIFEST }}
+        run: node scripts/production-preflight.mjs
+      - name: Deploy checked main commit
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy --config wrangler.production.json --keep-vars --message "GitHub main ${GITHUB_SHA}"
+      - name: Check production response
+        env:
+          PRODUCTION_ORIGIN: ${{ secrets.GEUMGYUL_PRODUCTION_ORIGIN }}
+        run: |
+          curl --fail --silent --show-error --retry 4 --retry-delay 5 "$PRODUCTION_ORIGIN/api/health" > /dev/null
+          status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$PRODUCTION_ORIGIN/api/state")
+          test "$status" = 401
