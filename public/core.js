@@ -1,4 +1,4 @@
-import {DEFAULT_RULES,validTime,isFree} from './rules.js';
+import {DEFAULT_RULES,validTime,isFree,nextDeadlineDate} from './rules.js';
 export const HOUR = 3600000;
 export const KST_OFFSET = 9 * HOUR;
 export const MEMBERS = [
@@ -25,6 +25,13 @@ export function isCalendarDate(date) { return /^\d{4}-\d{2}-\d{2}$/.test(date ||
 export function nextTuesday(now = new Date()) { const date = kstDate(now); return addDays(date, (2 - weekday(date) + 7) % 7); }
 export function deadlineExclusive(date,time='23:59') { if(typeof date==='object'){time=date.deadlineTime||date.rules?.deadlineTime||'23:59';date=date.deadlineDate;} return new Date(Date.parse(date+'T'+time+':00+09:00')+60000); }
 export function deadlineLabel(round) {const day=new Date(round.deadlineDate+'T12:00:00Z').getUTCDay();return ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'][day]+' '+(round.deadlineTime||round.rules?.deadlineTime||'23:59');}
+export function studyPauseMode(until,now=Date.now()) {
+  return until===0?'paused':until>now?'week-off':'active';
+}
+export function studyWeekOffUntil(rules,now=Date.now()) {
+  const schedule=rules.schedule==='weekly'?rules:{schedule:'weekly',weekday:0,deadlineTime:'23:59'};
+  return +deadlineExclusive(nextDeadlineDate(kstDate(now),schedule,now),schedule.deadlineTime);
+}
 export function isOnTime(at, round) { return +new Date(at) >= +new Date(round.startDate + 'T00:00:00+09:00') && +new Date(at) < +deadlineExclusive(round); }
 export function parseProblemURL(input, platform) {
   let url;

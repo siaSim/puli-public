@@ -1,3 +1,4 @@
+import {unstable_splitSqlQuery} from 'wrangler';
 import {seedLegacyMemberships} from './fixtures.js';
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
@@ -21,7 +22,7 @@ before(async()=>{
  const bundled=await build({entryPoints:['server/index.js'],bundle:true,format:'esm',platform:'browser',write:false,target:'es2022'});
  mf=new Miniflare({modules:true,script:bundled.outputFiles[0].text,compatibilityDate:'2026-05-22',d1Databases:['DB'],cf:false,fetchMock:mock,bindings:{ENCRYPTION_KEY:secret,OWNER_GITHUB_ID:'101',APP_ORIGIN:base}});
  db=await mf.getD1Database('DB');env={DB:db,ENCRYPTION_KEY:secret};
- for(const file of (await readdir('migrations')).filter(f=>f.endsWith('.sql')).sort())for(const sql of (await readFile('migrations/'+file,'utf8')).split(';').filter(s=>s.trim()))await db.prepare(sql).run();
+ for(const file of (await readdir('migrations')).filter(f=>f.endsWith('.sql')).sort())for(const sql of unstable_splitSqlQuery(await readFile('migrations/'+file,'utf8')).filter(s=>s.trim()))await db.prepare(sql).run();
  await db.prepare('INSERT INTO config VALUES (?,?)').bind('github',await seal(config,secret)).run();
  await db.prepare("INSERT INTO members(id,login,name,role,slot) VALUES ('101','fixture-owner','테스트 운영자','owner',0)").run();
  await seedLegacyMemberships(db);

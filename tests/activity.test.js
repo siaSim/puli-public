@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {dailyActivity,activityCalendar} from '../public/activity.js';
+import {dailyActivity,activityCalendar,dailyActivityPanel} from '../public/activity.js';
 
 const round={id:'r1',number:1,startDate:'2026-10-01',problems:[{id:'lc-two-sum',title:'Two Sum'},{id:'pg-42840',title:'모의고사'}]};
 const now=Date.parse('2026-10-22T04:00:00+09:00');
@@ -33,4 +33,32 @@ test('daily calendar spans Sunday to Saturday, preserves leap day, and leaves da
  assert.equal(calendar.weeks.length,1);assert.deepEqual(calendar.weeks[0],[null,null,null,'2024-02-28','2024-02-29','2024-03-01','2024-03-02']);
  const full=activityCalendar('2025-10-22','2026-10-21');const days=full.weeks.flat().filter(Boolean);
  assert.equal(days.length,365);assert.equal(new Set(days).size,365);assert.equal(full.weeks[0].length,7);
+});
+
+
+test('daily kumquat marks only dates containing on-time certifications, including the deadline minute in KST',()=>{
+ const end=Date.parse('2026-10-23T12:00:00+09:00');
+ const timed={...round,deadlineDate:'2026-10-21',deadlineTime:'23:59'};
+ const state={rounds:[timed],certificates:{r1:{me:{
+  'lc-two-sum':{method:'github',at:'2026-10-21T23:59:59+09:00'},
+  'pg-42840':{method:'photo',at:'2026-10-22T00:00:00+09:00'}
+ }}}};
+ const html=dailyActivityPanel({state,members:[{id:'me',name:'가상 팀원',login:'me'}],avatar:()=>'',dailyDays:90,now:end});
+ const buttons=[...html.matchAll(/<button class="day-square[^>]+>/g)].map(m=>m[0]);
+ const onTime=buttons.find(tag=>tag.includes('data-date="2026-10-21"'));
+ const late=buttons.find(tag=>tag.includes('data-date="2026-10-22"'));
+ assert.match(onTime,/has-slice/);assert.match(onTime,/정시 인증 1건/);
+ assert.doesNotMatch(late,/has-slice|정시 인증/);assert.match(late,/1건 인증/);
+ assert.match(html,/조각 무늬는 정시 인증 포함/);
+});
+
+test('a date containing both late and on-time proofs marks the date and reports only the on-time count',()=>{
+ const now=Date.parse('2026-10-23T12:00:00+09:00');
+ const state={rounds:[{...round,deadlineDate:'2026-10-20'},{...round,id:'r2',deadlineDate:'2026-10-22'}],certificates:{
+  r1:{me:{'lc-two-sum':{at:'2026-10-21T12:00:00+09:00'}}},
+  r2:{me:{'pg-42840':{at:'2026-10-21T13:00:00+09:00'}}}
+ }};
+ const html=dailyActivityPanel({state,members:[{id:'me',name:'가상 팀원',login:'me'}],avatar:()=>'',now});
+ const day=[...html.matchAll(/<button class="day-square[^>]+>/g)].map(m=>m[0]).find(tag=>tag.includes('data-date="2026-10-21"'));
+ assert.match(day,/level-2 has-slice/);assert.match(day,/2건 인증, 정시 인증 1건/);
 });

@@ -1,11 +1,12 @@
 import {DEFAULT_RULES,validateRules} from '../public/rules.js';
+import {studyWeekOffUntil} from '../public/core.js';
 import {one,many,run} from './store.js';
 
 export const DEFAULT_STUDY='study';
 export const studyId=s=>s.study_id||DEFAULT_STUDY;
 export class StudyError extends Error {constructor(status,message){super(message);this.status=status;}}
 const fail=(status,message)=>{throw new StudyError(status,message);};
-export const studyView=r=>({id:r.id,name:r.name,description:r.description,capacity:r.capacity,role:r.role,memberCount:r.member_count,createdAt:r.created_at,rules:r.rules?JSON.parse(r.rules):{...DEFAULT_RULES},rulesRevision:r.rules_revision||0});
+export const studyView=r=>({id:r.id,name:r.name,description:r.description,capacity:r.capacity,role:r.role,memberCount:r.member_count,createdAt:r.created_at,rules:r.rules?JSON.parse(r.rules):{...DEFAULT_RULES},rulesRevision:r.rules_revision||0,pauseUntil:r.pause_until??null,pauseRevision:r.pause_revision||0});
 export async function listStudies(env,memberId){
  return (await many(env,`SELECT s.*,m.role,(SELECT COUNT(*) FROM study_memberships WHERE study_id=s.id) AS member_count
  FROM studies s JOIN study_memberships m ON m.study_id=s.id WHERE m.member_id=? ORDER BY s.created_at,s.id`,memberId)).map(studyView);
@@ -15,7 +16,7 @@ export async function studySession(env,session,requested){
  const row=await one(env,`SELECT s.*,m.role,m.slot FROM study_memberships m JOIN studies s ON s.id=m.study_id
  WHERE m.member_id=? ${requested?'AND m.study_id=?':''} ORDER BY CASE WHEN s.id='study' THEN 0 ELSE 1 END,s.created_at,s.id LIMIT 1`,session.member_id,...(requested?[requested]:[]));
  if(!row)fail(403,'참여 중인 스터디를 선택해 주세요.');
- return {...session,study_id:row.id,role:row.role,slot:row.slot,study:{id:row.id,name:row.name,description:row.description,capacity:row.capacity,rules:row.rules?JSON.parse(row.rules):{...DEFAULT_RULES},rulesRevision:row.rules_revision||0}};
+ return {...session,study_id:row.id,role:row.role,slot:row.slot,study:studyView(row)};
 }
 export async function createStudy(env,session,data){
  if(!data||typeof data!=='object'||Array.isArray(data)||Object.keys(data).some(k=>!['name','description','capacity','rules'].includes(k))||
@@ -46,4 +47,15 @@ export async function updateStudyRules(env,session,data){
  const result=await run(env,'UPDATE studies SET rules=?,rules_revision=rules_revision+1 WHERE id=? AND rules_revision=?',JSON.stringify(rules),studyId(session),data.revision);
  if(!result.meta.changes)fail(409,'다른 곳에서 운영 규칙을 변경했어요. 새로고침 후 다시 저장해 주세요.');
  return {rules,revision:data.revision+1};
+}
+
+export async function updateStudyPause(env,session,data){
+ if(session.role!=='owner')fail(403,'스터디 운영자만 휴식 상태를 변경할 수 있어요.');
+ if(!data||typeof data!=='object'||Array.isArray(data)||Object.keys(data).some(k=>!['mode','revision'].includes(k))||
+ !['week-off','paused','active'].includes(data.mode)||!Number.isSafeInteger(data.revision)||data.revision<0)fail(400,'휴식 상태와 저장 버전을 확인해 주세요.');
+ const {rules,rulesRevision}=session.study;
+ const pauseUntil=data.mode==='week-off'?studyWeekOffUntil(rules):data.mode==='paused'?0:null;
+ const result=await run(env,"UPDATE studies SET pause_until=?,pause_revision=pause_revision+1 WHERE id=? AND pause_revision=? AND (?!='week-off' OR rules_revision=?)",pauseUntil,studyId(session),data.revision,data.mode,rulesRevision);
+ if(!result.meta.changes)fail(409,'스터디 운영 설정이 바뀌었어요. 새로고침 후 다시 시도해 주세요.');
+ return {pauseUntil,pauseRevision:data.revision+1};
 }

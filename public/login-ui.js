@@ -13,7 +13,7 @@ export function loginLayout(content, {aside = '', label = '코딩테스트 스�
   return `<div class="login-page">
     <header class="login-header">
       <a class="brand" href="/#home" aria-label="금귤 홈">
-        <span class="brand-mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 6-6 6 6 6m6-12 6 6-6 6"/></svg></span>
+        <span class="brand-mark brand-mark--character"><img src="/assets/characters/brand-icon.png" alt="" aria-hidden="true" width="52" height="52"></span>
         <span class="brand-name">금귤</span>
       </a>
       <span class="login-access">${h(label)}</span>

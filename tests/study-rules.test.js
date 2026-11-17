@@ -1,3 +1,4 @@
+import {unstable_splitSqlQuery} from 'wrangler';
 import {discoverCommitProblems} from '../server/github.js';
 import test,{before,beforeEach,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,7 +29,7 @@ async function upload(round,problem,{confidence=95,text,actor='1'}={}){
 before(async()=>{script=(await build({entryPoints:['server/index.js'],bundle:true,format:'esm',platform:'browser',write:false})).outputFiles[0].text;image=await sharp({create:{width:80,height:40,channels:3,background:'#fff'}}).jpeg().toBuffer();});
 beforeEach(async()=>{
  mf=new Miniflare({modules:true,script,compatibilityDate:'2026-05-22',d1Databases:['DB'],cf:false,bindings:{APP_ORIGIN:base,ENCRYPTION_KEY:secret,OWNER_GITHUB_ID:'1'}});db=await mf.getD1Database('DB');env={DB:db,ENCRYPTION_KEY:secret};
- for(const file of(await readdir('migrations')).filter(f=>f.endsWith('.sql')).sort())for(const sql of(await readFile('migrations/'+file,'utf8')).split(';').filter(s=>s.trim()))await db.prepare(sql).run();
+ for(const file of(await readdir('migrations')).filter(f=>f.endsWith('.sql')).sort())for(const sql of unstable_splitSqlQuery(await readFile('migrations/'+file,'utf8')).filter(s=>s.trim()))await db.prepare(sql).run();
  for(const [id,role,slot]of [['1','owner',0],['2','member',1]]){
   await db.prepare('INSERT INTO members(id,login,name) VALUES (?,?,?)').bind(id,'user'+id,'팀원'+id).run();
   await db.prepare("INSERT INTO study_memberships(study_id,member_id,role,slot,joined_at) VALUES ('study',?,?,?,?)").bind(id,role,slot,new Date().toISOString()).run();
@@ -101,7 +102,7 @@ test('GitHub free discovery validates source folders and README identities, auth
  };
  let current=repo,result;do{result=await syncRepository(env,current,{fetcher,now});current=await db.prepare('SELECT * FROM repositories').first();}while(result.more);
  let s=await state();assert.equal(s.rounds[0].problems.length,1);assert.equal(memberCount(s,s.rounds[0],'1'),1);assert.equal(s.certificates[id]['1'][EXAMPLES[0].id].sha,'a'.repeat(40));
- await upload(id,EXAMPLES[0]);s=await state();assert.equal(memberCount(s,s.rounds[0],'1'),1);assert.equal(s.certificates[id]['1'][EXAMPLES[0].id].method,'github');
+ await upload(id,EXAMPLES[0]);s=await state();assert.equal(memberCount(s,s.rounds[0],'1'),1);assert.equal(s.certificates[id]['1'][EXAMPLES[0].id].method,'github');assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM slice_awards WHERE round_id=? AND member_id=?').bind(id,'1').first()).n,1);
 });
 
 
@@ -133,4 +134,44 @@ test('late free photo evidence remains visible but does not complete the goal',a
  const id=await freePeriod();const yesterday=addDays(kstDate(),-1);await db.prepare('UPDATE rounds SET start_date=?,deadline_date=? WHERE id=?').bind(yesterday,yesterday,id).run();
  await addProblem(id);const r=await upload(id,EXAMPLES[0]);assert.equal(r.status,201);assert.equal((await r.json()).status,'approved');
  const s=await state();assert.ok(s.certificates[id]['1'][EXAMPLES[0].id]);assert.equal(memberCount(s,s.rounds[0],'1'),0);
+});
+
+test('only the owner can change a study pause, with CSRF protection and revision checks',async()=>{
+ const setPause=(mode,revision=0,opts={})=>jsonRequest('/api/studies/pause',{mode,revision},{method:'PATCH',...opts});
+ assert.equal((await state()).study.pauseUntil,null);
+ for(const opts of [{user:'2'},{user:''},{origin:'https://evil.test'}])assert.equal((await setPause('paused',0,opts)).status,opts.user===''?401:403);
+ assert.equal((await setPause('invalid')).status,400);
+ const started=await setPause('week-off');assert.equal(started.status,200);
+ const pause=await started.json();assert.ok(pause.pauseUntil>Date.now());assert.equal(pause.pauseRevision,1);
+ const memberView=await request('/api/studies',{user:'2'});assert.equal((await memberView.json()).studies[0].pauseUntil,pause.pauseUntil);
+ assert.equal((await setPause('active')).status,409);
+ const other=(await (await jsonRequest('/api/studies',{name:'별개 스터디',capacity:5})).json()).study;
+ assert.equal((await state(other.id)).study.pauseUntil,null);
+ const resumed=await setPause('active',1);assert.equal(resumed.status,200);
+ assert.deepEqual(await resumed.json(),{pauseUntil:null,pauseRevision:2});
+});
+
+test('pause preserves existing rounds and evidence, permits history, and blocks new periods until resumed or expired',async()=>{
+ const rules={...DEFAULT_RULES,problemCount:1,leetcodeCount:1,schedule:'custom'};
+ assert.equal((await setRules(rules)).status,200);
+ const id=await create({problems:[EXAMPLES[0]]});
+ const now=new Date().toISOString();
+ await db.prepare('INSERT INTO certificates VALUES (?,?,?,?,?,?,?)').bind(id,'1',EXAMPLES[0].id,'github',now,now,'{"preserve":true}').run();
+ const before=await state();
+ const pause=await jsonRequest('/api/studies/pause',{mode:'paused',revision:0},{method:'PATCH'});
+ assert.equal(pause.status,200);assert.equal((await pause.json()).pauseUntil,0);
+ const nextStart=addDays(before.rounds[0].deadlineDate,1);
+ const next={title:'새 회차',startDate:nextStart,deadlineDate:addDays(nextStart,6),problems:[EXAMPLES[0]]};
+ const blocked=await jsonRequest('/api/rounds',next);
+ assert.equal(blocked.status,409);assert.match((await blocked.json()).error,/쉬어가는 동안/);
+ const during=await state();
+ assert.deepEqual(during.rounds,before.rounds);assert.deepEqual(during.certificates,before.certificates);
+ const history=await jsonRequest('/api/rounds',{...next,title:'지난 문제',historyOnly:true,startDate:'2025-11-01',deadlineDate:'2025-11-08'});
+ assert.equal(history.status,201,await history.clone().text());
+ await db.prepare('UPDATE studies SET pause_until=? WHERE id=?').bind(Date.now()-1,'study').run();
+ const registered=await jsonRequest('/api/rounds',next);
+ assert.equal(registered.status,201,await registered.clone().text());
+ const rounds=(await state()).rounds;
+ assert.equal(rounds.find(round=>round.id===id).number,1);
+ assert.equal(rounds.find(round=>round.title==='새 회차').number,2);
 });

@@ -1,3 +1,4 @@
+import {unstable_splitSqlQuery} from 'wrangler';
 import {seedLegacyMemberships} from './fixtures.js';
 import test,{before,beforeEach,afterEach} from 'node:test';
 import assert from 'node:assert/strict';
@@ -22,7 +23,7 @@ const config={id:42,pem:generateKeyPairSync('rsa',{modulusLength:2048,privateKey
 before(async()=>{script=(await build({entryPoints:['server/index.js'],bundle:true,write:false,format:'esm',platform:'browser',target:'es2022'})).outputFiles[0].text;});
 beforeEach(async()=>{
  mf=new Miniflare({modules:true,script,compatibilityDate:'2026-05-22',d1Databases:['DB'],cf:false,bindings:{APP_ORIGIN:base,ENCRYPTION_KEY:secret,OWNER_GITHUB_ID:'1'}});db=await mf.getD1Database('DB');env={DB:db,ENCRYPTION_KEY:secret};
- for(const file of (await readdir('migrations')).filter(f=>f.endsWith('.sql')).sort())for(const sql of (await readFile('migrations/'+file,'utf8')).split(';').filter(s=>s.trim()))await db.prepare(sql).run();
+ for(const file of (await readdir('migrations')).filter(f=>f.endsWith('.sql')).sort())for(const sql of unstable_splitSqlQuery(await readFile('migrations/'+file,'utf8')).filter(s=>s.trim()))await db.prepare(sql).run();
  for(const [id,role,slot] of [['1','owner',0],['2','member',1],['3','member',2]]){
   await db.prepare('INSERT INTO members(id,login,name,role,slot) VALUES (?,?,?,?,?)').bind(id,'member'+id,'팀원'+id,role,slot).run();
   await db.prepare('INSERT INTO sessions VALUES (?,?,?,?)').bind(await hash('edit-'+id),id,await seal({token:'local-test-token'},secret),Date.now()+3600000).run();

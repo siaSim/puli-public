@@ -15,3 +15,16 @@ test('an author recorded by name never falls back to the registrar or fabricates
  const html=dashboard({state,members,icon:()=>'',avatar:()=>'',canEdit:true});
  assert.ok(html.includes('출제 출제자 예시'));assert.ok(html.includes('등록 예시 사용자'));assert.ok(html.includes('미정'));assert.ok(!html.includes('출제 예시 사용자'));assert.ok(roundSummary(r,members).includes('출제: 출제자 예시'));
 });
+
+test('round grass keeps its count and marks only rounds with an on-time proof',()=>{
+ const state=createSeed(),r=state.rounds[0];
+ r.startDate='2026-01-01';r.deadlineDate='2026-01-03';r.deadlineTime='23:59';
+ state.rounds=[r];state.activeRoundId=r.id;
+ state.certificates={[r.id]:{me:{[r.problems[0].id]:{method:'github',at:'2026-01-03T23:59:59+09:00'}},'2':{[r.problems[0].id]:{method:'github',at:'2026-01-04T00:00:00+09:00'}}}};
+ const html=dashboard({state,members,icon:()=>'',avatar:()=>'',canEdit:true});
+ const squares=[...html.matchAll(/<button class="contribution-square[^>]+>/g)].map(m=>m[0]);
+ const punctual=squares.find(tag=>tag.includes('예시 사용자'));
+ const late=squares.find(tag=>tag.includes('실제 출제자'));
+ assert.match(punctual,/has-slice/);assert.match(punctual,/정시 인증 1건/);
+ assert.doesNotMatch(late,/has-slice|정시 인증/);assert.match(late,/1\/5 인증/);
+});

@@ -65,7 +65,7 @@ export async function syncRepository(env,repo,{fetcher=fetch,now=Date.now()}={})
      const result=await run(env,`INSERT INTO certificates(round_id,member_id,problem_id,method,at,observed_at,evidence)
       SELECT ?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM rounds r JOIN study_memberships m ON m.study_id=r.study_id WHERE r.id=? AND r.revision=? AND m.member_id=?)
       ON CONFLICT(round_id,member_id,problem_id) DO UPDATE SET method=excluded.method,at=excluded.at,observed_at=excluded.observed_at,evidence=excluded.evidence WHERE excluded.at<certificates.at`,round.id,member.id,problem.id,'github',evidence.at,new Date(now).toISOString(),JSON.stringify(evidence),round.id,round.revision,member.id);
-     if(!existing)count+=result.meta.changes;certified.set(key,evidence.at);
+     if(!existing&&result.meta.changes)count++;certified.set(key,evidence.at);
     }
    }
    cursor.offset=i+1;

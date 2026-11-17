@@ -1,3 +1,4 @@
+import {unstable_splitSqlQuery} from 'wrangler';
 import {seedLegacyMemberships} from './fixtures.js';
 import test,{before,after} from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,7 +15,7 @@ const request=(path,{method='GET',actor='1',body,origin=base,headers={}}={})=>mf
 before(async()=>{
  const bundle=await build({entryPoints:['server/index.js'],bundle:true,format:'esm',platform:'browser',write:false});
  mf=new Miniflare({modules:true,script:bundle.outputFiles[0].text,compatibilityDate:'2026-05-22',d1Databases:['DB'],cf:false,bindings:{ENCRYPTION_KEY:secret,OWNER_GITHUB_ID:'1',APP_ORIGIN:base}});db=await mf.getD1Database('DB');
- for(const file of (await readdir('migrations')).filter(f=>f.endsWith('.sql')).sort())for(const sql of (await readFile('migrations/'+file,'utf8')).split(';').filter(s=>s.trim()))await db.prepare(sql).run();
+ for(const file of (await readdir('migrations')).filter(f=>f.endsWith('.sql')).sort())for(const sql of unstable_splitSqlQuery(await readFile('migrations/'+file,'utf8')).filter(s=>s.trim()))await db.prepare(sql).run();
  for(const [id,role]of [['1','owner'],['2','member'],['3','member']]){
   await db.prepare('INSERT INTO members(id,login,name,role,slot) VALUES (?,?,?,?,?)').bind(id,'user'+id,'팀원'+id,role,Number(id)-1).run();
   await db.prepare('INSERT INTO sessions(hash,member_id,sealed_token,expires_at) VALUES (?,?,?,?)').bind(await hash('photo-'+id),id,await seal({token:'qa'},secret),Date.now()+3600000).run();

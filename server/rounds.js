@@ -1,12 +1,13 @@
 import {DEFAULT_RULES} from '../public/rules.js';
 import {studyId} from './studies.js';
 import {one,many,run,asRound} from './store.js';
-import {validateRound,kstDate} from '../public/core.js';
+import {validateRound,kstDate,studyPauseMode} from '../public/core.js';
 
 export class RoundError extends Error {
  constructor(status,message,fields){super(message);this.status=status;this.fields=fields;}
 }
 const fail=(status,message,fields)=>{throw new RoundError(status,message,fields);};
+const pauseMessage='쉬어가는 동안에는 새 회차나 목표 기간을 등록할 수 없어요.';
 const requireOwner=session=>{if(session.role!=='owner')fail(403,'스터디 운영자만 할 수 있어요.');};
 function checkInput(data){
  if(!data||typeof data!=='object'||Array.isArray(data)||typeof data.title!=='string'||!Array.isArray(data.problems)||data.problems.some(p=>!p||typeof p.title!=='string'||typeof p.url!=='string'))fail(400,'회차 입력 형식을 확인해 주세요.');
@@ -44,9 +45,10 @@ function checkedProblems(data,rules=DEFAULT_RULES){
 
 export async function createRound(env,session,data){
  checkInput(data);
- const study=await one(env,'SELECT rules,rules_revision FROM studies WHERE id=?',studyId(session)),rules=JSON.parse(study.rules);
+ const study=await one(env,'SELECT rules,rules_revision,pause_until FROM studies WHERE id=?',studyId(session)),rules=JSON.parse(study.rules);
  if(data.rulesRevision!==undefined&&data.rulesRevision!==study.rules_revision)fail(409,'운영 규칙이 바뀌었어요. 새로고침 후 새 규칙으로 등록해 주세요.');
  if(data.historyOnly||rules.mode==='free')requireOwner(session);
+ if(!data.historyOnly&&studyPauseMode(study.pause_until)!=='active')fail(409,pauseMessage);
  const meta=historyMetadata(data),problems=checkedProblems(data,rules),setter=await author(env,session,data);
  const members=await many(env,'SELECT member_id AS id FROM study_memberships WHERE study_id=? ORDER BY slot',studyId(session)),last=await one(env,'SELECT * FROM rounds WHERE study_id=? AND history_only = 0 ORDER BY number DESC LIMIT 1',studyId(session));
  const lastSetter=last?asRound(last).setter:null;
@@ -64,8 +66,12 @@ export async function createRound(env,session,data){
  if(!data.historyOnly&&await one(env,'SELECT id FROM rounds WHERE study_id=? AND history_only = 0 AND start_date <= ? AND deadline_date >= ?',studyId(session),data.deadlineDate,data.startDate))fail(409,'이미 등록한 회차와 기간이 겹쳐요. 날짜를 확인해 주세요.');
  const id=crypto.randomUUID(),endDate=meta?.deadlineKnown===false?data.startDate:data.deadlineDate;
  // Legacy setter stays non-null in storage; setter_unlinked prevents treating the registrar as a named author's GitHub identity.
- const result=await run(env,'INSERT INTO rounds(id,number,title,start_date,deadline_date,setter,problems,created_at,history_only,history_meta,history_key,registered_by,setter_name,setter_unlinked,study_id,rules,deadline_time) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM rounds WHERE study_id=? AND (number = ? OR (? IS NOT NULL AND history_key = ?) OR (? = 0 AND history_only = 0 AND start_date <= ? AND deadline_date >= ?))) AND EXISTS (SELECT 1 FROM studies WHERE id=? AND rules_revision=?)',id,number,data.title.trim(),data.startDate,endDate,setter.legacySetter,JSON.stringify(problems),new Date().toISOString(),data.historyOnly?1:0,meta?JSON.stringify(meta):null,key,session.member_id,setter.setterName,setter.unlinked,studyId(session),data.historyOnly?null:JSON.stringify(rules),data.deadlineTime||rules.deadlineTime,studyId(session),number,key,key,data.historyOnly?1:0,endDate,data.startDate,studyId(session),study.rules_revision);
- if(!result.meta.changes)fail(409,'같은 회차 번호 또는 기간이 방금 등록됐어요. 새로고침해 주세요.');
+ const result=await run(env,'INSERT INTO rounds(id,number,title,start_date,deadline_date,setter,problems,created_at,history_only,history_meta,history_key,registered_by,setter_name,setter_unlinked,study_id,rules,deadline_time) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM rounds WHERE study_id=? AND (number = ? OR (? IS NOT NULL AND history_key = ?) OR (? = 0 AND history_only = 0 AND start_date <= ? AND deadline_date >= ?))) AND EXISTS (SELECT 1 FROM studies WHERE id=? AND rules_revision=? AND (?=1 OR pause_until IS NULL OR (pause_until>0 AND pause_until<=?)))',id,number,data.title.trim(),data.startDate,endDate,setter.legacySetter,JSON.stringify(problems),new Date().toISOString(),data.historyOnly?1:0,meta?JSON.stringify(meta):null,key,session.member_id,setter.setterName,setter.unlinked,studyId(session),data.historyOnly?null:JSON.stringify(rules),data.deadlineTime||rules.deadlineTime,studyId(session),number,key,key,data.historyOnly?1:0,endDate,data.startDate,studyId(session),study.rules_revision,data.historyOnly?1:0,Date.now());
+ if(!result.meta.changes){
+  const current=await one(env,'SELECT pause_until FROM studies WHERE id=?',studyId(session));
+  if(!data.historyOnly&&studyPauseMode(current?.pause_until)!=='active')fail(409,pauseMessage);
+  fail(409,'다른 변경이 먼저 반영됐어요. 새로고침 후 다시 등록해 주세요.');
+ }
  return {id};
 }
 
@@ -75,7 +81,7 @@ export async function updateRound(env,session,id,data){
  const row=await one(env,'SELECT * FROM rounds WHERE id = ? AND study_id=?',id,studyId(session));if(!row)fail(404,'회차를 찾을 수 없어요.');
  if(!Number.isInteger(data.revision)||data.revision!==row.revision)fail(409,'다른 곳에서 회차를 수정했어요. 새로고침 후 다시 수정해 주세요.',{revision:'다른 곳에서 회차를 수정했어요. 새로고침 후 최신 내용을 확인해 주세요.'});
  const original=asRound(row);
- for(const [key,value] of Object.entries({startDate:original.startDate,historyOnly:original.historyOnly,number:original.number}))if(data[key]!==undefined&&data[key]!==value)fail(400,'출제일과 회차 종류와 번호는 수정할 수 없어요.');
+ for(const [key,value] of Object.entries({startDate:original.startDate,historyOnly:original.historyOnly,number:original.number}))if(data[key]!==undefined&&data[key]!==value)fail(400,'출제일과 회차 종류 및 번호는 수정할 수 없어요.');
  if(data.historyKey!==undefined)fail(400,'출처 식별자는 수정할 수 없어요.');
  const merged={...original,...data,startDate:original.startDate,historyOnly:original.historyOnly};
  if(original.historyOnly){
